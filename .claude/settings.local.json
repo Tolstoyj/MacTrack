@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(./gradlew build:*)",
+      "Bash(find:*)",
+      "Bash(identify:*)",
+      "Bash(sips:*)",
+      "Bash(./gradlew clean:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
