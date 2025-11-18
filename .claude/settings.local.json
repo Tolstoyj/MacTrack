@@ -9,7 +9,11 @@
       "Bash(./gradlew clean:*)",
       "WebSearch",
       "Bash(./gradlew installDebug:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(./gradlew compileDebugKotlin:*)",
+      "Bash(./gradlew :app:compileDebugKotlin:*)",
+      "Bash(tr:*)",
+      "Bash(fold:*)"
     ],
     "deny": [],
     "ask": []

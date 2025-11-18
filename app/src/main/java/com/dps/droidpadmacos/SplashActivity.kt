@@ -1,15 +1,11 @@
 package com.dps.droidpadmacos
 
 import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Intent
-// import android.hardware.usb.UsbManager  // USB detection disabled
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-// import com.dps.droidpadmacos.usb.UsbConnectionDetector  // USB detection disabled
-import com.dps.droidpadmacos.usb.UsbDebugHelper
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -41,36 +37,8 @@ class SplashActivity : ComponentActivity() {
         setContent {
             DroidPadMacOSTheme {
                 SplashScreen {
-                    // Run USB diagnostics only in debug mode for performance
-                    // Comment this out in production builds to improve startup time by 150-250ms
-                    val enableDiagnostics = false // Set to true for debugging USB issues
-                    if (enableDiagnostics) {
-                        Log.d(TAG, "=== RUNNING USB DIAGNOSTICS ===")
-                        UsbDebugHelper.printFullDiagnostics(this@SplashActivity)
-                    }
-
-                    // USB detection disabled - always navigate to MainActivity for Bluetooth mode
-                    /*
-                    // Check for USB connection first
-                    val connectionInfo = UsbConnectionDetector.detectConnection(this@SplashActivity)
-
-                    Log.d(TAG, "USB Connection Info: $connectionInfo")
-
-                    if (UsbConnectionDetector.isSuitableForTrackpad(connectionInfo)) {
-                        // USB data connection detected - show USB connection screen
-                        Log.d(TAG, "Navigating to UsbConnectionActivity")
-                        val intent = Intent(this@SplashActivity, UsbConnectionActivity::class.java)
-                        intent.putExtra("CONNECTION_INFO", connectionInfo.connectionType.name)
-                        startActivity(intent)
-                    } else {
-                        // No suitable USB connection - go to Bluetooth mode
-                        Log.d(TAG, "Navigating to MainActivity (Bluetooth)")
-                        startActivity(Intent(this@SplashActivity, MainActivity::class.java))
-                    }
-                    */
-
-                    // Always go to MainActivity (Bluetooth mode only)
-                    Log.d(TAG, "Navigating to MainActivity (Bluetooth mode only)")
+                    // Navigate to MainActivity
+                    Log.d(TAG, "Navigating to MainActivity")
                     startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                     finish()
                 }

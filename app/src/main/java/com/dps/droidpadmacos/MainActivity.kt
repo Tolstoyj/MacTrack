@@ -9,7 +9,6 @@ import android.media.ToneGenerator
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
-import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -40,22 +39,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.dps.droidpadmacos.bluetooth.BluetoothHidService
-import com.dps.droidpadmacos.touchpad.TouchpadGestureDetector
 import com.dps.droidpadmacos.ui.Dimens
 import com.dps.droidpadmacos.ui.RecentDevicesList
-import com.dps.droidpadmacos.ui.TrackpadSurface
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 import com.dps.droidpadmacos.ui.theme.extendedColors
 import com.dps.droidpadmacos.viewmodel.TrackpadViewModel
-// USB imports disabled - app only uses Bluetooth mode now
-// import com.dps.droidpadmacos.usb.UsbConnectionDetector
-// import com.dps.droidpadmacos.usb.UsbConnectionMonitor
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: TrackpadViewModel by viewModels()
-    // USB monitoring disabled - removing usbMonitor variable
-    // private lateinit var usbMonitor: UsbConnectionMonitor
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -158,43 +150,6 @@ class MainActivity : ComponentActivity() {
 
         requestBluetoothPermissions()
 
-        // USB monitoring completely disabled - no USB detection dialog will appear
-        // The app will only work in Bluetooth mode
-        android.util.Log.d("MainActivity", "USB monitoring disabled - app will only use Bluetooth mode")
-
-        /*
-        // Check if user explicitly disabled USB monitoring (pressed Skip/Bluetooth button)
-        val disableUsbMonitoring = intent.getBooleanExtra("DISABLE_USB_MONITORING", false)
-
-        // Initialize USB monitor only if user didn't explicitly skip it
-        if (!disableUsbMonitoring) {
-            usbMonitor = UsbConnectionMonitor(this)
-            usbMonitor.startMonitoring()
-
-            // Observe USB connection state - only navigate when USB is NEWLY connected
-            lifecycleScope.launch {
-                var previouslySuitable = false
-
-                usbMonitor.connectionState.collect { connectionInfo ->
-                    connectionInfo?.let {
-                        val currentlySuitable = UsbConnectionDetector.isSuitableForTrackpad(it)
-
-                        // Only navigate if USB became suitable (wasn't before, but is now)
-                        if (currentlySuitable && !previouslySuitable) {
-                            android.util.Log.d("MainActivity", "USB connection newly detected, navigating to UsbConnectionActivity")
-                            val intent = Intent(this@MainActivity, UsbConnectionActivity::class.java)
-                            startActivity(intent)
-                        }
-
-                        previouslySuitable = currentlySuitable
-                    }
-                }
-            }
-        } else {
-            android.util.Log.d("MainActivity", "USB monitoring disabled - user explicitly skipped USB mode")
-        }
-        */
-
         // Observe Bluetooth connection state to play beep and navigate
         lifecycleScope.launch {
             viewModel.connectionState.collect { state ->
@@ -231,13 +186,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // USB monitoring disabled - no need to stop usbMonitor
-        /*
-        // Stop USB monitoring when activity is destroyed (if it was initialized)
-        if (::usbMonitor.isInitialized) {
-            usbMonitor.stopMonitoring()
-        }
-        */
     }
 
     private fun requestBluetoothPermissions() {
@@ -391,11 +339,19 @@ fun TrackpadScreen(
                                         }
                                 )
                             }
+                            is BluetoothHidService.ConnectionState.Registering,
+                            is BluetoothHidService.ConnectionState.Connecting -> {
+                                // Show loading indicator
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(64.dp),
+                                    color = MaterialTheme.extendedColors.info,
+                                    strokeWidth = 6.dp
+                                )
+                            }
                             else -> {
                                 Text(
                                     text = when (connectionState) {
                                         is BluetoothHidService.ConnectionState.Connected -> "✓"
-                                        is BluetoothHidService.ConnectionState.Registering -> "⏳"
                                         is BluetoothHidService.ConnectionState.Error -> "⚠️"
                                         else -> "📱"
                                     },

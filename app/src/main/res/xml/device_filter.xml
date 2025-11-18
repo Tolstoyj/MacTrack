@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Filter for all USB devices (will detect any computer connection) -->
-    <usb-device />
-
-    <!-- Specific filter for Apple devices (Mac) -->
-    <usb-device vendor-id="1452" />  <!-- Apple vendor ID in decimal (0x05AC) -->
-</resources>

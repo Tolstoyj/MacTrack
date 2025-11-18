@@ -62,16 +62,8 @@ object HelpStrings {
                 items = listOf(
                     HelpItem(
                         title = "What is DroidPad?",
-                        description = "Transform your Android phone into a wireless trackpad and keyboard for your Mac. No additional software needed on Mac!",
+                        description = "Transform your Android phone into a wireless trackpad and keyboard for your Mac via Bluetooth. No additional software needed on Mac!",
                         steps = null
-                    ),
-                    HelpItem(
-                        title = "Connection Modes",
-                        description = "DroidPad supports two connection methods:",
-                        steps = listOf(
-                            "📡 Bluetooth Mode: Wireless, supports advanced gestures and keyboard shortcuts",
-                            "🔌 USB Mode: Wired, lower latency, plug-and-play (requires USB debugging)"
-                        )
                     )
                 )
             ),
@@ -110,46 +102,6 @@ object HelpStrings {
                             "• Restart Bluetooth on Mac if needed",
                             "• Make sure phone is visible to Mac (accept discoverability)",
                             "• Try connecting from Mac Bluetooth settings"
-                        )
-                    )
-                )
-            ),
-            HelpSection(
-                title = "USB Connection",
-                icon = "🔌",
-                items = listOf(
-                    HelpItem(
-                        title = "USB Setup",
-                        description = "For fastest, most reliable connection:",
-                        steps = listOf(
-                            "1. Enable USB Debugging:",
-                            "   • Settings → About Phone → Tap 'Build Number' 7 times",
-                            "   • Settings → Developer Options → USB Debugging → ON",
-                            "2. Connect phone to Mac via USB cable",
-                            "3. Accept 'Allow USB Debugging' prompt",
-                            "4. Launch DroidPad - it will detect Mac automatically",
-                            "5. Tap 'Use as USB Trackpad'"
-                        )
-                    ),
-                    HelpItem(
-                        title = "USB Benefits",
-                        description = "Why use USB mode?",
-                        steps = listOf(
-                            "✅ Lower latency (faster response)",
-                            "✅ More reliable connection",
-                            "✅ No pairing required",
-                            "✅ Better battery (no Bluetooth radio)",
-                            "✅ Works when Bluetooth is off"
-                        )
-                    ),
-                    HelpItem(
-                        title = "Troubleshooting USB",
-                        description = "If USB not detected:",
-                        steps = listOf(
-                            "• Enable USB Debugging (see setup above)",
-                            "• Use quality USB cable (charge-only cables won't work)",
-                            "• Select 'File Transfer' or 'MTP' mode when prompted",
-                            "• Check diagnostics in app logs (see Developer section)"
                         )
                     )
                 )
@@ -264,7 +216,6 @@ object HelpStrings {
                             "• Move closer to Mac (Bluetooth range: ~10m)",
                             "• Remove obstacles between devices",
                             "• Disable Wi-Fi/Bluetooth on other nearby devices",
-                            "• Try USB mode for more stability",
                             "• Restart Bluetooth on both devices"
                         )
                     ),
@@ -277,17 +228,6 @@ object HelpStrings {
                             "• Try tapping to wake up connection",
                             "• Restart the app",
                             "• Reconnect to Mac"
-                        )
-                    ),
-                    HelpItem(
-                        title = "USB Not Detected",
-                        description = "App doesn't show USB screen:",
-                        steps = listOf(
-                            "• Enable USB Debugging (see USB Setup)",
-                            "• Check USB cable supports data (not charge-only)",
-                            "• Select 'MTP' or 'File Transfer' on phone",
-                            "• View USB diagnostics in app logs",
-                            "• Try different USB port on Mac"
                         )
                     )
                 )
@@ -335,21 +275,19 @@ object HelpStrings {
                         title = "Best Practices",
                         description = "For optimal experience:",
                         steps = listOf(
-                            "✨ Use USB mode for gaming/precision work",
-                            "✨ Use Bluetooth for presentations/mobility",
                             "✨ Enable 'Keep Screen On' in full-screen mode",
                             "✨ Clean your screen for better touch response",
-                            "✨ Use landscape mode for larger trackpad area"
+                            "✨ Use landscape mode for larger trackpad area",
+                            "✨ Stay within Bluetooth range (~10m) for best performance"
                         )
                     ),
                     HelpItem(
                         title = "Battery Saving",
                         description = "Extend battery life:",
                         steps = listOf(
-                            "• Use USB mode when near Mac",
                             "• Lower screen brightness",
                             "• Close app when not in use",
-                            "• Unregister when done (Bluetooth mode)"
+                            "• Unregister when done"
                         )
                     ),
                     HelpItem(
@@ -357,7 +295,7 @@ object HelpStrings {
                         description = "Improve responsiveness:",
                         steps = listOf(
                             "• Close background apps",
-                            "• Ensure good Bluetooth/USB connection",
+                            "• Ensure good Bluetooth connection",
                             "• Keep devices within range",
                             "• Update to latest app version"
                         )
@@ -374,13 +312,11 @@ object HelpStrings {
                         steps = listOf(
                             "Android:",
                             "• Android 6.0 or higher",
-                            "• Bluetooth 4.0+ (for Bluetooth mode)",
-                            "• USB OTG support (for USB mode)",
+                            "• Bluetooth 4.0+",
                             "",
                             "Mac:",
                             "• macOS 10.12 or higher",
-                            "• Bluetooth 4.0+ (for Bluetooth mode)",
-                            "• USB port (for USB mode)"
+                            "• Bluetooth 4.0+"
                         )
                     ),
                     HelpItem(
@@ -421,14 +357,6 @@ object HelpStrings {
                         description = "Transforma tu teléfono Android en un trackpad inalámbrico y teclado para tu Mac. ¡No necesitas software adicional en Mac!",
                         steps = null
                     ),
-                    HelpItem(
-                        title = "Modos de Conexión",
-                        description = "DroidPad admite dos métodos de conexión:",
-                        steps = listOf(
-                            "📡 Modo Bluetooth: Inalámbrico, admite gestos avanzados y atajos de teclado",
-                            "🔌 Modo USB: Con cable, menor latencia, plug-and-play (requiere depuración USB)"
-                        )
-                    )
                 )
             ),
             HelpSection(

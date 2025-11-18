@@ -13,6 +13,7 @@ import com.dps.droidpadmacos.data.DeviceHistoryManager
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicInteger
 
 @SuppressLint("MissingPermission")
 class TrackpadViewModel(application: Application) : AndroidViewModel(application) {
@@ -27,11 +28,10 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     val isProfileReady: StateFlow<Boolean> = bluetoothService.isProfileReady
     val recentDevices: StateFlow<List<com.dps.droidpadmacos.data.ConnectedDevice>> = deviceHistoryManager.recentDevices
 
-    // Mouse movement accumulator for smoother movement (thread-safe with volatile)
-    @Volatile
-    private var accumulatedX = 0f
-    @Volatile
-    private var accumulatedY = 0f
+    // Mouse movement accumulator for smoother movement (thread-safe with atomic operations)
+    private val accumulatedX = AtomicInteger(0)
+    private val accumulatedY = AtomicInteger(0)
+    private val SCALE_FACTOR = 100 // To convert float to int for atomic operations
 
     init {
         bluetoothService.initialize()
@@ -80,13 +80,17 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun sendMouseMovement(deltaX: Int, deltaY: Int) {
-        // Accumulate movement
-        accumulatedX += deltaX
-        accumulatedY += deltaY
+        // Accumulate movement using atomic operations
+        val newX = accumulatedX.addAndGet(deltaX * SCALE_FACTOR)
+        val newY = accumulatedY.addAndGet(deltaY * SCALE_FACTOR)
+
+        // Convert back from scaled integer to actual value
+        val currentX = newX / SCALE_FACTOR
+        val currentY = newY / SCALE_FACTOR
 
         // Send movement in chunks that fit in byte range (-127 to 127)
-        var sendX = accumulatedX.toInt().coerceIn(-127, 127).toByte()
-        var sendY = accumulatedY.toInt().coerceIn(-127, 127).toByte()
+        val sendX = currentX.coerceIn(-127, 127).toByte()
+        val sendY = currentY.coerceIn(-127, 127).toByte()
 
         if (sendX != 0.toByte() || sendY != 0.toByte()) {
             android.util.Log.d("TrackpadViewModel", "Sending to BT - X: $sendX, Y: $sendY (input was X:$deltaX, Y:$deltaY)")
@@ -97,9 +101,9 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
                 0
             )
 
-            // Subtract what we sent from accumulator
-            accumulatedX -= sendX.toInt()
-            accumulatedY -= sendY.toInt()
+            // Subtract what we sent from accumulator (thread-safe)
+            accumulatedX.addAndGet(-sendX.toInt() * SCALE_FACTOR)
+            accumulatedY.addAndGet(-sendY.toInt() * SCALE_FACTOR)
         }
     }
 

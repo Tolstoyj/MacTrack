@@ -212,11 +212,10 @@ fun HelpScreen(onBackPress: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Check USB diagnostics in logs:\nadb logcat -s UsbDebugHelper",
+                                text = "Check troubleshooting sections above or restart the app",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.extendedColors.onInfoContainer,
-                                textAlign = TextAlign.Center,
-                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(

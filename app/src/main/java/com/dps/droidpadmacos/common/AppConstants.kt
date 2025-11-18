@@ -16,7 +16,6 @@ object AppConstants {
         const val TAP_TIME_THRESHOLD_MS = 200L
         const val CLICK_DELAY_MS = 50L
         const val GESTURE_INFO_DISPLAY_DURATION_MS = 2000L
-        const val USB_PROPERTY_CACHE_DURATION_MS = 2000L
     }
 
     /**
@@ -51,14 +50,6 @@ object AppConstants {
     }
 
     /**
-     * USB Detection constants
-     */
-    object USB {
-        const val PROPERTY_CACHE_DURATION_MS = 2000L
-        const val FILE_READ_CACHE_DURATION_MS = 500L
-    }
-
-    /**
      * UI Layout constants
      */
     object UI {
@@ -86,28 +77,5 @@ object AppConstants {
     object Performance {
         const val FRAME_TIME_THRESHOLD_MS = 16 // 60fps = 16.67ms per frame
         const val STARTUP_TIME_WARNING_MS = 3000L
-    }
-
-    /**
-     * USB State file paths for detection
-     */
-    object UsbStatePaths {
-        val PATHS = listOf(
-            "/sys/class/android_usb/android0/state",
-            "/sys/devices/virtual/android_usb/android0/state",
-            "/sys/class/usb_device/usb_device/device/status"
-        )
-    }
-
-    /**
-     * System properties for USB/ADB detection
-     */
-    object SystemProperties {
-        const val ADB_DAEMON = "init.svc.adbd"
-        const val ADB_TCP_PORT = "service.adb.tcp.port"
-        const val USB_STATE = "sys.usb.state"
-        const val USB_CONFIG = "sys.usb.config"
-        const val USB_CONFIG_PERSIST = "persist.sys.usb.config"
-        const val BOOT_MODE = "ro.bootmode"
     }
 }

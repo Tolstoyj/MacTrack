@@ -38,14 +38,11 @@ import com.dps.droidpadmacos.ui.Dimens
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 import com.dps.droidpadmacos.ui.theme.extendedColors
 import com.dps.droidpadmacos.viewmodel.TrackpadViewModel
-import com.dps.droidpadmacos.usb.UsbHidService
 
 class FullScreenTrackpadActivity : ComponentActivity() {
 
     private val viewModel: TrackpadViewModel by viewModels()
     private var airMouseSensor: AirMouseSensor? = null
-    private var usbHidService: UsbHidService? = null
-    private var connectionMode: String = "BLUETOOTH" // Default to Bluetooth
 
     // Hardware button state for Air Mouse mode
     private var isAirMouseEnabled = false
@@ -69,16 +66,6 @@ class FullScreenTrackpadActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Get connection mode from intent
-        connectionMode = intent.getStringExtra("CONNECTION_MODE") ?: "BLUETOOTH"
-
-        // Initialize USB HID service if USB mode
-        if (connectionMode == "USB") {
-            usbHidService = UsbHidService(this).apply {
-                initialize()
-            }
-        }
-
         // Make full screen and keep screen on
         window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
                 or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
@@ -95,8 +82,6 @@ class FullScreenTrackpadActivity : ComponentActivity() {
                 FullScreenTrackpad(
                     viewModel = viewModel,
                     airMouseSensor = airMouseSensor,
-                    usbHidService = usbHidService,
-                    connectionMode = connectionMode,
                     onBackPress = { finish() },
                     onAirMouseToggle = { enabled -> isAirMouseEnabled = enabled },
                     initialBackgroundMode = prefs.getInt(PREF_BACKGROUND_MODE, 0),
@@ -211,555 +196,11 @@ class FullScreenTrackpadActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         airMouseSensor?.stop()
-        usbHidService?.close()
-    }
-}
-
-@OptIn(ExperimentalComposeUiApi::class)
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@Composable
-fun FullScreenTrackpad(
-    viewModel: TrackpadViewModel,
-    airMouseSensor: AirMouseSensor?,
-    usbHidService: UsbHidService?,
-    connectionMode: String,
-    onBackPress: () -> Unit,
-    onAirMouseToggle: (Boolean) -> Unit,
-    initialBackgroundMode: Int = 0,
-    initialAirMouseEnabled: Boolean = false,
-    onBackgroundModeChanged: (Int) -> Unit = {},
-    onAirMouseEnabledChanged: (Boolean) -> Unit = {}
-) {
-    var airMouseEnabled by remember { mutableStateOf(initialAirMouseEnabled) }
-    var backgroundMode by remember { mutableStateOf(initialBackgroundMode) }
-    var showAirMouseScreen by remember { mutableStateOf(false) }
-    var gestureInfo by remember { mutableStateOf("") }
-    var showInfo by remember { mutableStateOf(false) }
-
-    // Load user preferences
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val settingsPrefs = remember { context.getSharedPreferences("DroidPadSettings", Context.MODE_PRIVATE) }
-    val hideUIOverlay by remember { mutableStateOf(settingsPrefs.getBoolean("hide_ui_overlay", false)) }
-    val showGestureGuide by remember { mutableStateOf(settingsPrefs.getBoolean("show_gesture_guide", true)) }
-    val showConnectionStatus by remember { mutableStateOf(settingsPrefs.getBoolean("show_connection_status", true)) }
-    val minimalistMode by remember { mutableStateOf(settingsPrefs.getBoolean("minimalist_mode", false)) }
-    val trackpadSensitivity by remember { mutableFloatStateOf(settingsPrefs.getFloat("trackpad_sensitivity", 1.0f)) }
-    val scrollSpeed by remember { mutableFloatStateOf(settingsPrefs.getFloat("scroll_speed", 1.0f)) }
-
-    // USB connection state
-    val usbConnectionState by usbHidService?.connectionState?.collectAsState()
-        ?: remember { mutableStateOf(UsbHidService.ConnectionState.Disconnected) }
-
-    // Handle air mouse toggle
-    LaunchedEffect(airMouseEnabled) {
-        if (airMouseEnabled) {
-            airMouseSensor?.start()
-        } else {
-            airMouseSensor?.stop()
-        }
-    }
-
-    val gestureDetector = remember(usbHidService, trackpadSensitivity, scrollSpeed) {
-        EnhancedGestureDetector(
-            onMove = { deltaX, deltaY ->
-                // Apply sensitivity setting
-                val adjustedDeltaX = (deltaX * trackpadSensitivity).toInt()
-                val adjustedDeltaY = (deltaY * trackpadSensitivity).toInt()
-
-                if (usbHidService != null) {
-                    usbHidService.sendMouseMovement(adjustedDeltaX, adjustedDeltaY)
-                } else {
-                    viewModel.sendMouseMovement(adjustedDeltaX, adjustedDeltaY)
-                }
-            },
-            onLeftClick = {
-                if (usbHidService != null) {
-                    usbHidService.sendMouseClick(UsbHidService.MouseButton.LEFT)
-                } else {
-                    viewModel.sendLeftClick()
-                }
-            },
-            onRightClick = {
-                if (usbHidService != null) {
-                    usbHidService.sendMouseClick(UsbHidService.MouseButton.RIGHT)
-                } else {
-                    viewModel.sendRightClick()
-                }
-            },
-            onMiddleClick = {
-                if (usbHidService != null) {
-                    usbHidService.sendMouseClick(UsbHidService.MouseButton.MIDDLE)
-                }
-            },
-            onScroll = { deltaY ->
-                // Apply scroll speed setting
-                val adjustedDeltaY = (deltaY * scrollSpeed).toInt()
-
-                if (usbHidService != null) {
-                    usbHidService.sendScroll(adjustedDeltaY)
-                } else {
-                    viewModel.sendScroll(adjustedDeltaY)
-                }
-            },
-            onThreeFingerSwipeUp = {
-                viewModel.sendMissionControl()
-            },
-            onThreeFingerSwipeDown = {
-                viewModel.sendShowDesktop()
-            },
-            onThreeFingerSwipeLeft = {
-                viewModel.sendSwitchToPreviousDesktop()
-            },
-            onThreeFingerSwipeRight = {
-                viewModel.sendSwitchToNextDesktop()
-            },
-            onFourFingerSwipeLeft = {
-                // Reserved for future use
-            },
-            onFourFingerSwipeRight = {
-                // Reserved for future use
-            },
-            onPinchZoom = { scale ->
-                // Pinch zoom gesture
-            },
-            onDragStart = {
-                // Press and hold left button for dragging
-                if (usbHidService != null) {
-                    usbHidService.sendMouseButtonPress(UsbHidService.MouseButton.LEFT)
-                } else {
-                    viewModel.sendMouseButtonPress(HidConstants.BUTTON_LEFT)
-                }
-            },
-            onDragEnd = {
-                // Release left button when drag ends
-                if (usbHidService != null) {
-                    usbHidService.sendMouseButtonRelease()
-                } else {
-                    viewModel.sendMouseButtonRelease()
-                }
-            }
-        )
-    }
-
-    // Auto-hide info removed - silent mode
-
-    // Show dedicated Air Mouse screen when enabled
-    if (showAirMouseScreen && airMouseEnabled) {
-        AirMouseScreen(
-            viewModel = viewModel,
-            onClose = { showAirMouseScreen = false },
-            onDisable = {
-                airMouseEnabled = false
-                showAirMouseScreen = false
-                onAirMouseToggle(false)
-                onAirMouseEnabledChanged(false)
-            }
-        )
-        return
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                when (backgroundMode) {
-                    0 -> Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF0D1117),
-                            Color(0xFF161B22)
-                        )
-                    )
-                    1 -> Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF1C1C1E),
-                            Color(0xFF1C1C1E)
-                        )
-                    )
-                    else -> Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFF2C2C2E),
-                            Color(0xFF0D1117)
-                        )
-                    )
-                }
-            )
-    ) {
-        // Grid pattern overlay for mode 2
-        if (backgroundMode == 2) {
-            androidx.compose.foundation.Canvas(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                val gridSize = 50f
-                for (i in 0 until (size.width / gridSize).toInt()) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.05f),
-                        start = androidx.compose.ui.geometry.Offset(i * gridSize, 0f),
-                        end = androidx.compose.ui.geometry.Offset(i * gridSize, size.height),
-                        strokeWidth = 1f
-                    )
-                }
-                for (i in 0 until (size.height / gridSize).toInt()) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.05f),
-                        start = androidx.compose.ui.geometry.Offset(0f, i * gridSize),
-                        end = androidx.compose.ui.geometry.Offset(size.width, i * gridSize),
-                        strokeWidth = 1f
-                    )
-                }
-            }
-        }
-
-        // Trackpad gesture area - BEHIND the controls
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInteropFilter { event ->
-                    gestureDetector.handleTouchEvent(event)
-                }
-        )
-
-        // Top bar - ABOVE the trackpad area (conditionally shown)
-        if (!hideUIOverlay) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopStart)
-            ) {
-                // First row: Close button and connection status
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Close button - top left corner (always show if UI not hidden)
-                    IconButton(
-                        onClick = onBackPress,
-                        modifier = Modifier
-                            .size(Dimens.closeButtonSize())
-                            .background(
-                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                    ) {
-                        Text(
-                            text = "✕",
-                            fontSize = 24.sp,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Connection indicator - next to close button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .background(
-                            color = when {
-                                connectionMode == "USB" && usbConnectionState is UsbHidService.ConnectionState.Connected ->
-                                    MaterialTheme.extendedColors.successContainer
-                                connectionMode == "BLUETOOTH" ->
-                                    MaterialTheme.extendedColors.successContainer
-                                else ->
-                                    MaterialTheme.extendedColors.warningContainer
-                            },
-                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
-                        )
-                        .padding(
-                            horizontal = Dimens.connectionBadgePaddingHorizontal(),
-                            vertical = Dimens.connectionBadgePaddingVertical()
-                        )
-                ) {
-                    Text(
-                        text = when (connectionMode) {
-                            "USB" -> "🔌"
-                            else -> "📡"
-                        },
-                        fontSize = 14.sp
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .background(
-                                color = when {
-                                    connectionMode == "USB" && usbConnectionState is UsbHidService.ConnectionState.Connected ->
-                                        MaterialTheme.extendedColors.success
-                                    connectionMode == "BLUETOOTH" ->
-                                        MaterialTheme.extendedColors.success
-                                    else ->
-                                        MaterialTheme.extendedColors.warning
-                                },
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                    )
-                    Text(
-                        text = when {
-                            connectionMode == "USB" && usbConnectionState is UsbHidService.ConnectionState.Connected ->
-                                (usbConnectionState as UsbHidService.ConnectionState.Connected).deviceName
-                            connectionMode == "USB" && usbConnectionState is UsbHidService.ConnectionState.Connecting ->
-                                "Connecting..."
-                            connectionMode == "USB" ->
-                                "USB Mode"
-                            else ->
-                                "Bluetooth"
-                        },
-                        fontSize = 14.sp,
-                        color = when {
-                            connectionMode == "USB" && usbConnectionState is UsbHidService.ConnectionState.Connected ->
-                                MaterialTheme.extendedColors.onSuccessContainer
-                            connectionMode == "BLUETOOTH" ->
-                                MaterialTheme.extendedColors.onSuccessContainer
-                            else ->
-                                MaterialTheme.extendedColors.onWarningContainer
-                        },
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            // Second row: Mini Keyboard Layout (aligned to right)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(end = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Surface(
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-                    color = Color(0xFF2C2C2E).copy(alpha = 0.95f),
-                    shadowElevation = 8.dp
-                ) {
-                Column(
-                    modifier = Modifier.padding(Dimens.keyboardPadding()),
-                    verticalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())
-                ) {
-                    // Row 1: Shortcuts
-                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
-                        KeyboardKey("⌘C", "Copy") {
-                            viewModel.sendCopy()
-                            gestureInfo = "Copy (⌘C)"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘V", "Paste") {
-                            viewModel.sendPaste()
-                            gestureInfo = "Paste (⌘V)"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘X", "Cut") {
-                            viewModel.sendCut()
-                            gestureInfo = "Cut (⌘X)"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘Z", "Undo") {
-                            viewModel.sendUndo()
-                            gestureInfo = "Undo (⌘Z)"
-                            showInfo = true
-                        }
-                    }
-
-                    // Row 2: Actions
-                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
-                        KeyboardKey("⌘A", "All") {
-                            viewModel.sendSelectAll()
-                            gestureInfo = "Select All"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘T", "Tab") {
-                            viewModel.sendNewTab()
-                            gestureInfo = "New Tab"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘W", "Close") {
-                            viewModel.sendCloseWindow()
-                            gestureInfo = "Close Window"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘Q", "Quit") {
-                            viewModel.sendQuitApp()
-                            gestureInfo = "Quit App"
-                            showInfo = true
-                        }
-                    }
-
-                    // Row 3: Special Keys
-                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
-                        KeyboardKey("ESC", null) {
-                            viewModel.sendKeyPress(HidConstants.KEY_ESCAPE)
-                            gestureInfo = "Escape"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌫", "Del") {
-                            viewModel.sendKeyPress(HidConstants.KEY_BACKSPACE)
-                            gestureInfo = "Delete"
-                            showInfo = true
-                        }
-                        KeyboardKey("↵", "Enter") {
-                            viewModel.sendKeyPress(HidConstants.KEY_ENTER)
-                            gestureInfo = "Enter"
-                            showInfo = true
-                        }
-                        KeyboardKey("⌘Sp", "Spot") {
-                            viewModel.sendSpotlight()
-                            gestureInfo = "Spotlight"
-                            showInfo = true
-                        }
-                    }
-
-                    // Row 4: System Actions & Air Mouse
-                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
-                        KeyboardKey("MC", null) {
-                            viewModel.sendMissionControl()
-                            gestureInfo = "Mission Control"
-                            showInfo = true
-                        }
-                        KeyboardKey("Apps", null) {
-                            viewModel.sendAppSwitcher()
-                            gestureInfo = "App Switcher"
-                            showInfo = true
-                        }
-                        KeyboardKey("Desk", null) {
-                            viewModel.sendShowDesktop()
-                            gestureInfo = "Show Desktop"
-                            showInfo = true
-                        }
-                        if (airMouseSensor?.isAvailable() == true) {
-                            KeyboardKey("Air", if (airMouseEnabled) "ON" else "OFF") {
-                                airMouseEnabled = !airMouseEnabled
-                                onAirMouseToggle(airMouseEnabled)
-                                onAirMouseEnabledChanged(airMouseEnabled)
-                                if (airMouseEnabled) {
-                                    showAirMouseScreen = true
-                                }
-                                gestureInfo = if (airMouseEnabled) "Air Mouse ON" else "Air Mouse OFF"
-                                showInfo = true
-                            }
-                        } else {
-                            KeyboardKey(
-                                when (backgroundMode) {
-                                    0 -> "🌈"
-                                    1 -> "⬜"
-                                    else -> "⊞"
-                                }, "BG"
-                            ) {
-                                backgroundMode = (backgroundMode + 1) % 3
-                                onBackgroundModeChanged(backgroundMode)
-                                gestureInfo = when (backgroundMode) {
-                                    0 -> "Gradient"
-                                    1 -> "Solid"
-                                    else -> "Grid"
-                                }
-                                showInfo = true
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        }
-
-        // Center gesture hint or Air Mouse indicator (conditionally shown)
-        if (!hideUIOverlay && !minimalistMode && (gestureInfo.isEmpty() || airMouseEnabled)) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .background(
-                        color = if (airMouseEnabled)
-                            MaterialTheme.extendedColors.successContainer
-                        else
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
-                    )
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (airMouseEnabled) {
-                    Text(
-                        text = "📱",
-                        fontSize = 60.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Air Mouse Mode",
-                        fontSize = 20.sp,
-                        color = MaterialTheme.extendedColors.success,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Tilt phone to move cursor",
-                        fontSize = 16.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Vol− = Click • Vol+ = Right Click",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        fontWeight = FontWeight.Normal
-                    )
-                    Text(
-                        text = "Vol− (2x) = Double Click",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        fontWeight = FontWeight.Normal
-                    )
-                    Text(
-                        text = "Vol− (long) = Toggle Drag",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                        fontWeight = FontWeight.Normal
-                    )
-                } else {
-                    Text(
-                        text = "🖐️",
-                        fontSize = Dimens.gestureHintIconSize()
-                    )
-                    Spacer(modifier = Modifier.height(Dimens.spacingMedium()))
-                    Text(
-                        text = "Touch anywhere to begin",
-                        fontSize = Dimens.gestureHintTextSize(),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-
-        // Gesture feedback removed - silent mode
-
-        // Bottom gesture guide (subtle) - conditionally shown based on settings
-        if (!hideUIOverlay && showGestureGuide) {
-            Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(16.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
-                )
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            GestureGuideItem("1👆", "Move")
-            GestureGuideItem("👆", "Click")
-            GestureGuideItem("2👆", "Right")
-            GestureGuideItem("2⇅", "Scroll")
-            GestureGuideItem("3⬆", "MissCtr")
-            GestureGuideItem("3⬇", "Desktop")
-            GestureGuideItem("3⬅➡", "Spaces")
-            }
-        }
     }
 }
 
 @Composable
-fun GestureGuideItem(icon: String, label: String) {
+private fun GestureGuideItem(icon: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(Dimens.keyboardKeyWidth())
@@ -1137,11 +578,11 @@ private fun AirMouseScreen(
                     modifier = Modifier.padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    InstructionItem("🎯", "Tilt phone", "Move cursor")
-                    InstructionItem("Vol−", "Single press", "Left click")
-                    InstructionItem("Vol+", "Single press", "Right click")
-                    InstructionItem("Vol−", "Double press", "Double click")
-                    InstructionItem("Vol−", "Long press", "Toggle drag")
+                    AirMouseInstructionItem("🎯", "Tilt phone", "Move cursor")
+                    AirMouseInstructionItem("Vol−", "Single press", "Left click")
+                    AirMouseInstructionItem("Vol+", "Single press", "Right click")
+                    AirMouseInstructionItem("Vol−", "Double press", "Double click")
+                    AirMouseInstructionItem("Vol−", "Long press", "Toggle drag")
                 }
             }
 
@@ -1149,17 +590,17 @@ private fun AirMouseScreen(
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                ActionButton(
+                AirMouseActionButton(
                     icon = "⌘C",
                     label = "Copy",
                     onClick = { viewModel.sendCopy() }
                 )
-                ActionButton(
+                AirMouseActionButton(
                     icon = "⌘V",
                     label = "Paste",
                     onClick = { viewModel.sendPaste() }
                 )
-                ActionButton(
+                AirMouseActionButton(
                     icon = "⌘Z",
                     label = "Undo",
                     onClick = { viewModel.sendUndo() }
@@ -1170,7 +611,7 @@ private fun AirMouseScreen(
 }
 
 @Composable
-private fun InstructionItem(icon: String, action: String, description: String) {
+private fun AirMouseInstructionItem(icon: String, action: String, description: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -1202,7 +643,7 @@ private fun InstructionItem(icon: String, action: String, description: String) {
 }
 
 @Composable
-private fun ActionButton(icon: String, label: String, onClick: () -> Unit) {
+private fun AirMouseActionButton(icon: String, label: String, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -1229,6 +670,483 @@ private fun ActionButton(icon: String, label: String, onClick: () -> Unit) {
                 color = Color(0xFFB0B0B0),
                 fontWeight = FontWeight.Medium
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun FullScreenTrackpad(
+    viewModel: TrackpadViewModel,
+    airMouseSensor: AirMouseSensor?,
+    onBackPress: () -> Unit,
+    onAirMouseToggle: (Boolean) -> Unit,
+    initialBackgroundMode: Int = 0,
+    initialAirMouseEnabled: Boolean = false,
+    onBackgroundModeChanged: (Int) -> Unit = {},
+    onAirMouseEnabledChanged: (Boolean) -> Unit = {}
+) {
+    var airMouseEnabled by remember { mutableStateOf(initialAirMouseEnabled) }
+    var backgroundMode by remember { mutableStateOf(initialBackgroundMode) }
+    var showAirMouseScreen by remember { mutableStateOf(false) }
+    var gestureInfo by remember { mutableStateOf("") }
+    var showInfo by remember { mutableStateOf(false) }
+
+    // Load user preferences
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settingsPrefs = remember { context.getSharedPreferences("DroidPadSettings", Context.MODE_PRIVATE) }
+    val hideUIOverlay by remember { mutableStateOf(settingsPrefs.getBoolean("hide_ui_overlay", false)) }
+    val showGestureGuide by remember { mutableStateOf(settingsPrefs.getBoolean("show_gesture_guide", true)) }
+    val showConnectionStatus by remember { mutableStateOf(settingsPrefs.getBoolean("show_connection_status", true)) }
+    val minimalistMode by remember { mutableStateOf(settingsPrefs.getBoolean("minimalist_mode", false)) }
+    val trackpadSensitivity by remember { mutableFloatStateOf(settingsPrefs.getFloat("trackpad_sensitivity", 1.0f)) }
+    val scrollSpeed by remember { mutableFloatStateOf(settingsPrefs.getFloat("scroll_speed", 1.0f)) }
+
+    // Handle air mouse toggle
+    LaunchedEffect(airMouseEnabled) {
+        if (airMouseEnabled) {
+            airMouseSensor?.start()
+        } else {
+            airMouseSensor?.stop()
+        }
+    }
+
+    val gestureDetector = remember(trackpadSensitivity, scrollSpeed) {
+        EnhancedGestureDetector(
+            onMove = { deltaX, deltaY ->
+                // Apply sensitivity setting
+                val adjustedDeltaX = (deltaX * trackpadSensitivity).toInt()
+                val adjustedDeltaY = (deltaY * trackpadSensitivity).toInt()
+                viewModel.sendMouseMovement(adjustedDeltaX, adjustedDeltaY)
+            },
+            onLeftClick = {
+                viewModel.sendLeftClick()
+            },
+            onRightClick = {
+                viewModel.sendRightClick()
+            },
+            onMiddleClick = {
+                // Middle click - reserved for future use
+            },
+            onScroll = { deltaY ->
+                // Apply scroll speed setting
+                val adjustedDeltaY = (deltaY * scrollSpeed).toInt()
+                viewModel.sendScroll(adjustedDeltaY)
+            },
+            onThreeFingerSwipeUp = {
+                viewModel.sendMissionControl()
+            },
+            onThreeFingerSwipeDown = {
+                viewModel.sendShowDesktop()
+            },
+            onThreeFingerSwipeLeft = {
+                viewModel.sendSwitchToPreviousDesktop()
+            },
+            onThreeFingerSwipeRight = {
+                viewModel.sendSwitchToNextDesktop()
+            },
+            onFourFingerSwipeLeft = {
+                // Reserved for future use
+            },
+            onFourFingerSwipeRight = {
+                // Reserved for future use
+            },
+            onPinchZoom = { scale ->
+                // Pinch zoom gesture
+            },
+            onDragStart = {
+                // Press and hold left button for dragging
+                viewModel.sendMouseButtonPress(HidConstants.BUTTON_LEFT)
+            },
+            onDragEnd = {
+                // Release left button when drag ends
+                viewModel.sendMouseButtonRelease()
+            }
+        )
+    }
+
+    // Auto-hide info removed - silent mode
+
+    // Show dedicated Air Mouse screen when enabled
+    if (showAirMouseScreen && airMouseEnabled) {
+        AirMouseScreen(
+            viewModel = viewModel,
+            onClose = { showAirMouseScreen = false },
+            onDisable = {
+                airMouseEnabled = false
+                showAirMouseScreen = false
+                onAirMouseToggle(false)
+                onAirMouseEnabledChanged(false)
+            }
+        )
+        return
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                when (backgroundMode) {
+                    0 -> Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xFF0D1117),
+                            Color(0xFF161B22)
+                        )
+                    )
+                    1 -> Brush.linearGradient(
+                        colors = listOf(
+                            Color(0xFF1C1C1E),
+                            Color(0xFF1C1C1E)
+                        )
+                    )
+                    else -> Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF2C2C2E),
+                            Color(0xFF0D1117)
+                        )
+                    )
+                }
+            )
+    ) {
+        // Grid pattern overlay for mode 2
+        if (backgroundMode == 2) {
+            androidx.compose.foundation.Canvas(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                val gridSize = 50f
+                for (i in 0 until (size.width / gridSize).toInt()) {
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.05f),
+                        start = androidx.compose.ui.geometry.Offset(i * gridSize, 0f),
+                        end = androidx.compose.ui.geometry.Offset(i * gridSize, size.height),
+                        strokeWidth = 1f
+                    )
+                }
+                for (i in 0 until (size.height / gridSize).toInt()) {
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.05f),
+                        start = androidx.compose.ui.geometry.Offset(0f, i * gridSize),
+                        end = androidx.compose.ui.geometry.Offset(size.width, i * gridSize),
+                        strokeWidth = 1f
+                    )
+                }
+            }
+        }
+
+        // Trackpad gesture area - BEHIND the controls
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInteropFilter { event ->
+                    gestureDetector.handleTouchEvent(event)
+                }
+        )
+
+        // Top bar - ABOVE the trackpad area (conditionally shown)
+        if (!hideUIOverlay) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart)
+            ) {
+                // First row: Close button and connection status
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Close button - top left corner (always show if UI not hidden)
+                    IconButton(
+                        onClick = onBackPress,
+                        modifier = Modifier
+                            .size(Dimens.closeButtonSize())
+                            .background(
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    ) {
+                        Text(
+                            text = "✕",
+                            fontSize = 24.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Connection indicator - next to close button
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.extendedColors.successContainer,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+                        )
+                        .padding(
+                            horizontal = Dimens.connectionBadgePaddingHorizontal(),
+                            vertical = Dimens.connectionBadgePaddingVertical()
+                        )
+                ) {
+                    Text(
+                        text = "📡",
+                        fontSize = 14.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(
+                                color = MaterialTheme.extendedColors.success,
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                    Text(
+                        text = "Bluetooth",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.extendedColors.onSuccessContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            // Second row: Mini Keyboard Layout (aligned to right)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                    color = Color(0xFF2C2C2E).copy(alpha = 0.95f),
+                    shadowElevation = 8.dp
+                ) {
+                Column(
+                    modifier = Modifier.padding(Dimens.keyboardPadding()),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())
+                ) {
+                    // Row 1: Shortcuts
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
+                        KeyboardKey("⌘C", "Copy") {
+                            viewModel.sendCopy()
+                            gestureInfo = "Copy (⌘C)"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘V", "Paste") {
+                            viewModel.sendPaste()
+                            gestureInfo = "Paste (⌘V)"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘X", "Cut") {
+                            viewModel.sendCut()
+                            gestureInfo = "Cut (⌘X)"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘Z", "Undo") {
+                            viewModel.sendUndo()
+                            gestureInfo = "Undo (⌘Z)"
+                            showInfo = true
+                        }
+                    }
+
+                    // Row 2: Actions
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
+                        KeyboardKey("⌘A", "All") {
+                            viewModel.sendSelectAll()
+                            gestureInfo = "Select All"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘T", "Tab") {
+                            viewModel.sendNewTab()
+                            gestureInfo = "New Tab"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘W", "Close") {
+                            viewModel.sendCloseWindow()
+                            gestureInfo = "Close Window"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘Q", "Quit") {
+                            viewModel.sendQuitApp()
+                            gestureInfo = "Quit App"
+                            showInfo = true
+                        }
+                    }
+
+                    // Row 3: Special Keys
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
+                        KeyboardKey("ESC", null) {
+                            viewModel.sendKeyPress(HidConstants.KEY_ESCAPE)
+                            gestureInfo = "Escape"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌫", "Del") {
+                            viewModel.sendKeyPress(HidConstants.KEY_BACKSPACE)
+                            gestureInfo = "Delete"
+                            showInfo = true
+                        }
+                        KeyboardKey("↵", "Enter") {
+                            viewModel.sendKeyPress(HidConstants.KEY_ENTER)
+                            gestureInfo = "Enter"
+                            showInfo = true
+                        }
+                        KeyboardKey("⌘Sp", "Spot") {
+                            viewModel.sendSpotlight()
+                            gestureInfo = "Spotlight"
+                            showInfo = true
+                        }
+                    }
+
+                    // Row 4: System Actions & Air Mouse
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
+                        KeyboardKey("MC", null) {
+                            viewModel.sendMissionControl()
+                            gestureInfo = "Mission Control"
+                            showInfo = true
+                        }
+                        KeyboardKey("Apps", null) {
+                            viewModel.sendAppSwitcher()
+                            gestureInfo = "App Switcher"
+                            showInfo = true
+                        }
+                        KeyboardKey("Desk", null) {
+                            viewModel.sendShowDesktop()
+                            gestureInfo = "Show Desktop"
+                            showInfo = true
+                        }
+                        if (airMouseSensor?.isAvailable() == true) {
+                            KeyboardKey("Air", if (airMouseEnabled) "ON" else "OFF") {
+                                airMouseEnabled = !airMouseEnabled
+                                onAirMouseToggle(airMouseEnabled)
+                                onAirMouseEnabledChanged(airMouseEnabled)
+                                if (airMouseEnabled) {
+                                    showAirMouseScreen = true
+                                }
+                                gestureInfo = if (airMouseEnabled) "Air Mouse ON" else "Air Mouse OFF"
+                                showInfo = true
+                            }
+                        } else {
+                            KeyboardKey(
+                                when (backgroundMode) {
+                                    0 -> "🌈"
+                                    1 -> "⬜"
+                                    else -> "⊞"
+                                }, "BG"
+                            ) {
+                                backgroundMode = (backgroundMode + 1) % 3
+                                onBackgroundModeChanged(backgroundMode)
+                                gestureInfo = when (backgroundMode) {
+                                    0 -> "Gradient"
+                                    1 -> "Solid"
+                                    else -> "Grid"
+                                }
+                                showInfo = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+        }
+
+        // Center gesture hint or Air Mouse indicator (conditionally shown)
+        if (!hideUIOverlay && !minimalistMode && (gestureInfo.isEmpty() || airMouseEnabled)) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(
+                        color = if (airMouseEnabled)
+                            MaterialTheme.extendedColors.successContainer
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
+                    )
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (airMouseEnabled) {
+                    Text(
+                        text = "📱",
+                        fontSize = 60.sp
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Air Mouse Mode",
+                        fontSize = 20.sp,
+                        color = MaterialTheme.extendedColors.success,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Tilt phone to move cursor",
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Vol− = Click • Vol+ = Right Click",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Normal
+                    )
+                    Text(
+                        text = "Vol− (2x) = Double Click",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Normal
+                    )
+                    Text(
+                        text = "Vol− (long) = Toggle Drag",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Normal
+                    )
+                } else {
+                    Text(
+                        text = "🖐️",
+                        fontSize = Dimens.gestureHintIconSize()
+                    )
+                    Spacer(modifier = Modifier.height(Dimens.spacingMedium()))
+                    Text(
+                        text = "Touch anywhere to begin",
+                        fontSize = Dimens.gestureHintTextSize(),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Gesture feedback removed - silent mode
+
+        // Bottom gesture guide (subtle) - conditionally shown based on settings
+        if (!hideUIOverlay && showGestureGuide) {
+            Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(16.dp)
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                )
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            GestureGuideItem("1👆", "Move")
+            GestureGuideItem("👆", "Click")
+            GestureGuideItem("2👆", "Right")
+            GestureGuideItem("2⇅", "Scroll")
+            GestureGuideItem("3⬆", "MissCtr")
+            GestureGuideItem("3⬇", "Desktop")
+            GestureGuideItem("3⬅➡", "Spaces")
+            }
         }
     }
 }

@@ -133,7 +133,7 @@ fun SettingsScreen(
 
                 SwitchSetting(
                     title = "Show Connection Status",
-                    description = "Display Bluetooth/USB connection indicator",
+                    description = "Display Bluetooth connection indicator",
                     checked = showConnectionStatus,
                     onCheckedChange = {
                         showConnectionStatus = it
