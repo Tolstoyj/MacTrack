@@ -2,12 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Bluetooth Permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
-    <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
+    <!-- USB Permissions -->
+    <uses-permission android:name="android.permission.USB_PERMISSION" />
+
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.accessory" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -18,21 +24,56 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DroidPadMacOS">
+
+        <!-- Splash Screen - First screen user sees -->
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.DroidPadMacOS">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- USB Connection Detection Activity -->
+        <activity
+            android:name=".UsbConnectionActivity"
+            android:exported="true"
+            android:theme="@style/Theme.DroidPadMacOS">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </activity>
+
+        <!-- Main Activity -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.DroidPadMacOS" />
+
+        <!-- Discoverable/Pairing Activity -->
+        <activity
+            android:name=".DiscoverableActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DroidPadMacOS" />
+
+        <!-- Full Screen Trackpad -->
         <activity
             android:name=".FullScreenTrackpadActivity"
             android:exported="false"
             android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.DroidPadMacOS" />
+
+        <!-- Help Activity -->
+        <activity
+            android:name=".HelpActivity"
+            android:exported="false"
+            android:label="Help &amp; Guide"
             android:theme="@style/Theme.DroidPadMacOS" />
     </application>
 

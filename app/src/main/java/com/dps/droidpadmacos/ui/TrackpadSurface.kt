@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,15 +54,15 @@ fun TrackpadSurface(
                     .background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
-                                Color(0xFFF5F5F5),
-                                Color(0xFFE8E8E8)
+                                MaterialTheme.colorScheme.surface,
+                                MaterialTheme.colorScheme.surfaceVariant
                             )
                         ),
                         shape = RoundedCornerShape(24.dp)
                     )
                     .border(
                         width = 1.dp,
-                        color = Color(0xFFD0D0D0),
+                        color = MaterialTheme.colorScheme.outline,
                         shape = RoundedCornerShape(24.dp)
                     )
             ) {
@@ -76,7 +77,7 @@ fun TrackpadSurface(
                                 .fillMaxWidth()
                                 .height(1.dp)
                                 .padding(horizontal = 32.dp)
-                                .background(Color(0x10000000))
+                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                         )
                     }
                 }
@@ -125,8 +126,8 @@ fun TrackpadSurface(
                                 .offset(x = (x - 20).dp, y = (y - 20).dp)
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x302196F3))
-                                .border(2.dp, Color(0x802196F3), CircleShape)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+                                .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), CircleShape)
                         )
                     }
 
@@ -144,12 +145,12 @@ fun TrackpadSurface(
                                 modifier = Modifier
                                     .size(80.dp)
                                     .background(
-                                        color = Color(0x15000000),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                         shape = RoundedCornerShape(16.dp)
                                     )
                                     .border(
                                         width = 2.dp,
-                                        color = Color(0x30000000),
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                         shape = RoundedCornerShape(16.dp)
                                     ),
                                 contentAlignment = Alignment.Center
@@ -165,7 +166,7 @@ fun TrackpadSurface(
                             Text(
                                 text = "Touch to move cursor",
                                 fontSize = 14.sp,
-                                color = Color(0x80000000),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -180,7 +181,7 @@ fun TrackpadSurface(
                 ) {
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.White.copy(alpha = 0.7f)
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -202,12 +203,12 @@ fun TrackpadSurface(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        color = Color(0xFFF5F5F5),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         shape = RoundedCornerShape(24.dp)
                     )
                     .border(
                         width = 2.dp,
-                        color = Color(0xFFBDBDBD),
+                        color = MaterialTheme.colorScheme.outline,
                         shape = RoundedCornerShape(24.dp)
                     ),
                 contentAlignment = Alignment.Center
@@ -223,14 +224,14 @@ fun TrackpadSurface(
                     Text(
                         text = "Not Connected",
                         fontSize = 18.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Register and connect to enable",
                         fontSize = 14.sp,
-                        color = Color.Gray,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -252,7 +253,7 @@ private fun GestureHint(icon: String, label: String) {
         Text(
             text = label,
             fontSize = 10.sp,
-            color = Color(0xFF666666),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
     }

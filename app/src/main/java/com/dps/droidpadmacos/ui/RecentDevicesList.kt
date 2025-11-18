@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.dps.droidpadmacos.ui.theme.extendedColors
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,7 +35,7 @@ fun RecentDevicesList(
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF8F9FA)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
@@ -49,7 +50,7 @@ fun RecentDevicesList(
                     text = "Recent Devices",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1976D2)
+                    color = MaterialTheme.colorScheme.primary
                 )
 
                 if (devices.isNotEmpty()) {
@@ -57,7 +58,7 @@ fun RecentDevicesList(
                         Text(
                             text = "Clear",
                             fontSize = 12.sp,
-                            color = Color(0xFFE53935)
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -73,7 +74,7 @@ fun RecentDevicesList(
                     Text(
                         text = "No recent devices",
                         fontSize = 13.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -111,7 +112,7 @@ fun RecentDevicesList(
                         showClearDialog = false
                     }
                 ) {
-                    Text("Clear", color = Color(0xFFE53935))
+                    Text("Clear", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -138,7 +139,10 @@ private fun DeviceItem(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = if (isCurrentDevice) Color(0xFFE3F2FD) else Color.White,
+                color = if (isCurrentDevice)
+                    MaterialTheme.extendedColors.infoContainer
+                else
+                    MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(8.dp)
             )
             .clickable(enabled = !isCurrentDevice, onClick = onClick)
@@ -162,14 +166,17 @@ private fun DeviceItem(
                     text = device.name,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isCurrentDevice) Color(0xFF1976D2) else Color(0xFF212121),
+                    color = if (isCurrentDevice)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = formattedDate,
                     fontSize = 11.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -179,10 +186,10 @@ private fun DeviceItem(
                 text = "Connected",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF4CAF50),
+                color = MaterialTheme.extendedColors.success,
                 modifier = Modifier
                     .background(
-                        color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                        color = MaterialTheme.extendedColors.successContainer,
                         shape = RoundedCornerShape(4.dp)
                     )
                     .padding(horizontal = 8.dp, vertical = 4.dp)

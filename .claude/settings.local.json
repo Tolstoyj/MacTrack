@@ -6,7 +6,9 @@
       "Bash(find:*)",
       "Bash(identify:*)",
       "Bash(sips:*)",
-      "Bash(./gradlew clean:*)"
+      "Bash(./gradlew clean:*)",
+      "WebSearch",
+      "Bash(./gradlew installDebug:*)"
     ],
     "deny": [],
     "ask": []

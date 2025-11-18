@@ -143,12 +143,28 @@ object HidConstants {
     const val MOD_NONE = 0x00.toByte()
 
     // Keyboard key codes (USB HID usage codes)
+    const val KEY_A = 0x04.toByte()
+    const val KEY_C = 0x06.toByte()
+    const val KEY_Q = 0x14.toByte()
+    const val KEY_T = 0x17.toByte()
+    const val KEY_V = 0x19.toByte()
+    const val KEY_W = 0x1A.toByte()
+    const val KEY_X = 0x1B.toByte()
+    const val KEY_Z = 0x1D.toByte()
+    const val KEY_ENTER = 0x28.toByte()
+    const val KEY_ESCAPE = 0x29.toByte()
+    const val KEY_BACKSPACE = 0x2A.toByte()
+    const val KEY_TAB = 0x2B.toByte()
+    const val KEY_SPACE = 0x2C.toByte()
     const val KEY_UP_ARROW = 0x52.toByte()
     const val KEY_DOWN_ARROW = 0x51.toByte()
     const val KEY_LEFT_ARROW = 0x50.toByte()
     const val KEY_RIGHT_ARROW = 0x4F.toByte()
     const val KEY_F3 = 0x3C.toByte()
     const val KEY_F11 = 0x44.toByte()
-    const val KEY_TAB = 0x2B.toByte()
     const val KEY_NONE = 0x00.toByte()
+
+    // macOS Desktop/Space switching
+    // Ctrl + Left Arrow: Switch to previous desktop/space
+    // Ctrl + Right Arrow: Switch to next desktop/space
 }

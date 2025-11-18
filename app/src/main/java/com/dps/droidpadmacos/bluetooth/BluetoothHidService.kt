@@ -285,6 +285,18 @@ class BluetoothHidService private constructor(private val context: Context) {
         sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_TAB)
     }
 
+    suspend fun sendSwitchToPreviousDesktop() {
+        // Mac Switch to Previous Desktop/Space: Ctrl + Left Arrow
+        Log.d(TAG, "=== Sending Switch to Previous Desktop command (Ctrl+Left) ===")
+        sendKeyPress(HidConstants.MOD_LEFT_CTRL, HidConstants.KEY_LEFT_ARROW)
+    }
+
+    suspend fun sendSwitchToNextDesktop() {
+        // Mac Switch to Next Desktop/Space: Ctrl + Right Arrow
+        Log.d(TAG, "=== Sending Switch to Next Desktop command (Ctrl+Right) ===")
+        sendKeyPress(HidConstants.MOD_LEFT_CTRL, HidConstants.KEY_RIGHT_ARROW)
+    }
+
     fun makeDiscoverable() {
         // The device needs to be discoverable for initial pairing
         // This is typically done through system settings, but we can log it

@@ -27,8 +27,10 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     val isProfileReady: StateFlow<Boolean> = bluetoothService.isProfileReady
     val recentDevices: StateFlow<List<com.dps.droidpadmacos.data.ConnectedDevice>> = deviceHistoryManager.recentDevices
 
-    // Mouse movement accumulator for smoother movement
+    // Mouse movement accumulator for smoother movement (thread-safe with volatile)
+    @Volatile
     private var accumulatedX = 0f
+    @Volatile
     private var accumulatedY = 0f
 
     init {
@@ -63,8 +65,11 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun connectToDevice(device: BluetoothDevice) {
+        android.util.Log.d("TrackpadViewModel", "connectToDevice() called for: ${device.name} (${device.address})")
         viewModelScope.launch {
+            android.util.Log.d("TrackpadViewModel", "Calling bluetoothService.connect()...")
             bluetoothService.connect(device)
+            android.util.Log.d("TrackpadViewModel", "bluetoothService.connect() returned")
         }
     }
 
@@ -170,9 +175,117 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun sendSwitchToPreviousDesktop() {
+        viewModelScope.launch {
+            bluetoothService.sendSwitchToPreviousDesktop()
+        }
+    }
+
+    fun sendSwitchToNextDesktop() {
+        viewModelScope.launch {
+            bluetoothService.sendSwitchToNextDesktop()
+        }
+    }
+
+    fun sendSpotlight() {
+        viewModelScope.launch {
+            // Cmd + Space for Spotlight
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_SPACE)
+        }
+    }
+
+    fun sendKeyPress(keyCode: Byte) {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_NONE, keyCode)
+        }
+    }
+
+    fun sendMouseButtonPress(button: Byte) {
+        bluetoothService.sendMouseReport(button, 0, 0, 0)
+    }
+
+    fun sendMouseButtonRelease() {
+        bluetoothService.sendMouseReport(HidConstants.BUTTON_NONE, 0, 0, 0)
+    }
+
+    // Common macOS keyboard shortcuts
+    fun sendCopy() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_C)
+        }
+    }
+
+    fun sendPaste() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_V)
+        }
+    }
+
+    fun sendCut() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_X)
+        }
+    }
+
+    fun sendUndo() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_Z)
+        }
+    }
+
+    fun sendSelectAll() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_A)
+        }
+    }
+
+    fun sendCloseWindow() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_W)
+        }
+    }
+
+    fun sendQuitApp() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_Q)
+        }
+    }
+
+    fun sendNewTab() {
+        viewModelScope.launch {
+            bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_T)
+        }
+    }
+
     fun connectToDeviceByAddress(address: String): Boolean {
+        android.util.Log.d("TrackpadViewModel", "=== Quick Connect Started ===")
+        android.util.Log.d("TrackpadViewModel", "Attempting to connect to device: $address")
+        android.util.Log.d("TrackpadViewModel", "Current connection state: ${connectionState.value}")
+        android.util.Log.d("TrackpadViewModel", "Is registered: ${isRegistered.value}")
+        android.util.Log.d("TrackpadViewModel", "Is profile ready: ${isProfileReady.value}")
+
+        // Check if HID is registered
+        if (!isRegistered.value) {
+            android.util.Log.w("TrackpadViewModel", "HID device not registered! Registering first...")
+            registerDevice()
+            // Give it a moment to register, then try connecting
+            viewModelScope.launch {
+                kotlinx.coroutines.delay(1500)
+                val device = bluetoothAdapter?.getRemoteDevice(address)
+                if (device != null) {
+                    android.util.Log.d("TrackpadViewModel", "After registration, connecting to: ${device.name} (${device.address})")
+                    connectToDevice(device)
+                } else {
+                    android.util.Log.e("TrackpadViewModel", "Device not found after registration: $address")
+                }
+            }
+            return true
+        }
+
         val device = bluetoothAdapter?.getRemoteDevice(address)
         return if (device != null) {
+            android.util.Log.d("TrackpadViewModel", "Device found: ${device.name} (${device.address})")
+            android.util.Log.d("TrackpadViewModel", "Calling connectToDevice()...")
             connectToDevice(device)
             true
         } else {

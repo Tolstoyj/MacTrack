@@ -1,5 +1,7 @@
 package com.dps.droidpadmacos.touchpad
 
+import android.os.Handler
+import android.os.Looper
 import android.view.MotionEvent
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -13,19 +15,26 @@ class EnhancedGestureDetector(
     private val onScroll: (deltaY: Int) -> Unit,
     private val onThreeFingerSwipeUp: () -> Unit,
     private val onThreeFingerSwipeDown: () -> Unit,
+    private val onThreeFingerSwipeLeft: () -> Unit,
+    private val onThreeFingerSwipeRight: () -> Unit,
     private val onFourFingerSwipeLeft: () -> Unit,
     private val onFourFingerSwipeRight: () -> Unit,
-    private val onPinchZoom: (scale: Float) -> Unit
+    private val onPinchZoom: (scale: Float) -> Unit,
+    private val onDragStart: () -> Unit = {},  // Called when drag begins (press button)
+    private val onDragEnd: () -> Unit = {}     // Called when drag ends (release button)
 ) {
 
     private var lastX = 0f
     private var lastY = 0f
+    private var touchStartX = 0f
+    private var touchStartY = 0f
     private var isMoving = false
     private var touchStartTime = 0L
     private var initialPointerCount = 0
     private var isScrolling = false
     private var lastScrollY = 0f
     private var isGesturing = false
+    private var isDragging = false  // Track if we're in drag mode
 
     // For three/four finger gestures
     private var gestureStartX = 0f
@@ -34,13 +43,24 @@ class EnhancedGestureDetector(
     // For pinch zoom
     private var initialDistance = 0f
 
+    // Handler for drag timer
+    private val handler = Handler(Looper.getMainLooper())
+    private val dragTimer = Runnable {
+        // Timer fired - start drag if finger is still down and hasn't moved much
+        if (!isMoving && !isDragging) {
+            isDragging = true
+            onDragStart()
+        }
+    }
+
     // Sensitivity settings
     private var movementSensitivity = 2.5f
     private var scrollSensitivity = 1.0f
 
     // Thresholds
     private val tapTimeThreshold = 200L
-    private val tapMovementThreshold = 20f
+    private val tapMovementThreshold = 15f  // Increased from 20f
+    private val dragTimeThreshold = 250L    // Hold for 250ms to start dragging
     private val gestureThreshold = 100f
 
     fun handleTouchEvent(event: MotionEvent): Boolean {
@@ -67,14 +87,23 @@ class EnhancedGestureDetector(
     private fun handleActionDown(event: MotionEvent) {
         lastX = event.x
         lastY = event.y
+        touchStartX = event.x
+        touchStartY = event.y
         touchStartTime = System.currentTimeMillis()
         initialPointerCount = 1
         isMoving = false
         isScrolling = false
         isGesturing = false
+        isDragging = false
+
+        // Start drag timer - will trigger after dragTimeThreshold if finger stays down
+        handler.postDelayed(dragTimer, dragTimeThreshold)
     }
 
     private fun handlePointerDown(event: MotionEvent) {
+        // Cancel drag timer when second finger goes down
+        handler.removeCallbacks(dragTimer)
+
         when (event.pointerCount) {
             2 -> {
                 initialPointerCount = 2
@@ -114,11 +143,28 @@ class EnhancedGestureDetector(
         val currentX = event.x
         val currentY = event.y
 
+        // Check total movement from start to determine if this is a tap or movement
+        val totalDeltaX = abs(currentX - touchStartX)
+        val totalDeltaY = abs(currentY - touchStartY)
+        val totalMovement = sqrt(totalDeltaX * totalDeltaX + totalDeltaY * totalDeltaY)
+
+        // If user moves beyond threshold before drag timer fires, cancel drag and just move cursor
+        if (!isDragging && !isMoving && totalMovement > tapMovementThreshold) {
+            // Cancel drag timer - user is moving cursor, not dragging
+            handler.removeCallbacks(dragTimer)
+            isMoving = true
+        }
+
+        // If already dragging, mark as moving to prevent click on release
+        if (isDragging) {
+            isMoving = true
+        }
+
+        // Send movement if we're moving or dragging
         val deltaX = (currentX - lastX) * movementSensitivity
         val deltaY = (currentY - lastY) * movementSensitivity
 
-        if (abs(deltaX) > 1 || abs(deltaY) > 1) {
-            isMoving = true
+        if ((isMoving || isDragging) && (abs(deltaX) > 1 || abs(deltaY) > 1)) {
             onMove(deltaX.roundToInt(), deltaY.roundToInt())
         }
 
@@ -155,17 +201,33 @@ class EnhancedGestureDetector(
     private fun handleThreeFingerMove(event: MotionEvent) {
         if (initialPointerCount != 3 || event.pointerCount < 3) return
 
+        val currentX = calculateAverageX(event)
         val currentY = calculateAverageY(event)
+        val deltaX = currentX - gestureStartX
         val deltaY = currentY - gestureStartY
 
-        if (!isGesturing && abs(deltaY) > gestureThreshold) {
+        if (!isGesturing && (abs(deltaX) > gestureThreshold || abs(deltaY) > gestureThreshold)) {
             isGesturing = true
-            if (deltaY > 0) {
-                // Swipe down - Show all windows (Mission Control)
-                onThreeFingerSwipeDown()
+
+            // Determine if gesture is more horizontal or vertical
+            if (abs(deltaX) > abs(deltaY)) {
+                // Horizontal gesture - switch between desktops
+                if (deltaX > 0) {
+                    // Swipe right - Next desktop
+                    onThreeFingerSwipeRight()
+                } else {
+                    // Swipe left - Previous desktop
+                    onThreeFingerSwipeLeft()
+                }
             } else {
-                // Swipe up - Show desktop
-                onThreeFingerSwipeUp()
+                // Vertical gesture - Mission Control / Show Desktop
+                if (deltaY > 0) {
+                    // Swipe down - Show all windows (Mission Control)
+                    onThreeFingerSwipeDown()
+                } else {
+                    // Swipe up - Show desktop
+                    onThreeFingerSwipeUp()
+                }
             }
         }
     }
@@ -195,6 +257,14 @@ class EnhancedGestureDetector(
         when (event.actionMasked) {
             MotionEvent.ACTION_UP -> {
                 // Last finger lifted
+
+                // If we were dragging, end the drag first
+                if (isDragging) {
+                    onDragEnd()
+                    isDragging = false
+                }
+
+                // Then handle clicks if applicable
                 if (initialPointerCount == 1 && !isMoving && isQuickTap) {
                     // Single tap - left click
                     onLeftClick()
@@ -242,9 +312,13 @@ class EnhancedGestureDetector(
     }
 
     private fun reset() {
+        // Cancel any pending drag timer
+        handler.removeCallbacks(dragTimer)
+
         isMoving = false
         isScrolling = false
         isGesturing = false
+        isDragging = false
         initialPointerCount = 0
     }
 
