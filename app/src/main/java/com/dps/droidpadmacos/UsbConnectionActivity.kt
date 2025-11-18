@@ -229,25 +229,21 @@ fun UsbConnectionScreen(
                                 .size(120.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (deviceInfo?.isLikelyMac == true)
+                                    if (deviceInfo?.connectionType == "USB_DATA")
                                         MaterialTheme.colorScheme.primaryContainer
                                     else
                                         MaterialTheme.colorScheme.surfaceVariant
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            if (deviceInfo?.isLikelyMac == true) {
-                                Image(
-                                    painter = painterResource(id = R.drawable.img_macbook),
-                                    contentDescription = "Mac",
-                                    modifier = Modifier.size(80.dp)
-                                )
-                            } else {
-                                Text(
-                                    text = "💻",
-                                    fontSize = 56.sp
-                                )
-                            }
+                            Text(
+                                text = when (deviceInfo?.connectionType) {
+                                    "USB_DATA" -> "🖥️"
+                                    "USB_CHARGING" -> "🔋"
+                                    else -> "💻"
+                                },
+                                fontSize = 56.sp
+                            )
                         }
                     }
 
@@ -256,8 +252,9 @@ fun UsbConnectionScreen(
                     // Title
                     Text(
                         text = when {
-                            deviceInfo?.isLikelyMac == true -> "Mac Detected!"
-                            deviceInfo != null -> "Computer Connected"
+                            deviceInfo?.connectionType == "USB_DATA" -> "USB Connection Detected"
+                            deviceInfo?.connectionType == "USB_CHARGING" -> "USB Charging Only"
+                            deviceInfo != null -> "USB Connected"
                             else -> "No Connection"
                         },
                         fontSize = 26.sp,
@@ -271,8 +268,9 @@ fun UsbConnectionScreen(
                     // Subtitle
                     Text(
                         text = when {
-                            deviceInfo?.isLikelyMac == true -> "Use your phone as a wireless trackpad"
-                            deviceInfo != null -> "USB data connection established"
+                            deviceInfo?.connectionType == "USB_DATA" -> "USB data connection established"
+                            deviceInfo?.connectionType == "USB_CHARGING" -> "Charging only, no data connection"
+                            deviceInfo != null -> "Use your phone as a trackpad"
                             else -> "Connect via USB to detect"
                         },
                         fontSize = 14.sp,
@@ -297,9 +295,6 @@ fun UsbConnectionScreen(
                             ) {
                                 InfoRow("Connection", deviceInfo.connectionType)
                                 InfoRow("Status", deviceInfo.description)
-                                if (deviceInfo.isLikelyMac) {
-                                    InfoRow("Device Type", "Mac/Computer")
-                                }
                             }
                         }
 
@@ -336,10 +331,7 @@ fun UsbConnectionScreen(
                                     )
                                     Column(horizontalAlignment = Alignment.Start) {
                                         Text(
-                                            text = if (deviceInfo?.isLikelyMac == true)
-                                                "Connect to Mac"
-                                            else
-                                                "Connect via USB",
+                                            text = "Use as USB Trackpad",
                                             fontSize = 17.sp,
                                             fontWeight = FontWeight.Bold
                                         )

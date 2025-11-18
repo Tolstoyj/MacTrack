@@ -8,7 +8,8 @@
       "Bash(sips:*)",
       "Bash(./gradlew clean:*)",
       "WebSearch",
-      "Bash(./gradlew installDebug:*)"
+      "Bash(./gradlew installDebug:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

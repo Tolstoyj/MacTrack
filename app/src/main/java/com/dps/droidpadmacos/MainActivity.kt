@@ -41,18 +41,21 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.dps.droidpadmacos.bluetooth.BluetoothHidService
 import com.dps.droidpadmacos.touchpad.TouchpadGestureDetector
+import com.dps.droidpadmacos.ui.Dimens
 import com.dps.droidpadmacos.ui.RecentDevicesList
 import com.dps.droidpadmacos.ui.TrackpadSurface
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 import com.dps.droidpadmacos.ui.theme.extendedColors
 import com.dps.droidpadmacos.viewmodel.TrackpadViewModel
-import com.dps.droidpadmacos.usb.UsbConnectionDetector
-import com.dps.droidpadmacos.usb.UsbConnectionMonitor
+// USB imports disabled - app only uses Bluetooth mode now
+// import com.dps.droidpadmacos.usb.UsbConnectionDetector
+// import com.dps.droidpadmacos.usb.UsbConnectionMonitor
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: TrackpadViewModel by viewModels()
-    private lateinit var usbMonitor: UsbConnectionMonitor
+    // USB monitoring disabled - removing usbMonitor variable
+    // private lateinit var usbMonitor: UsbConnectionMonitor
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -155,6 +158,11 @@ class MainActivity : ComponentActivity() {
 
         requestBluetoothPermissions()
 
+        // USB monitoring completely disabled - no USB detection dialog will appear
+        // The app will only work in Bluetooth mode
+        android.util.Log.d("MainActivity", "USB monitoring disabled - app will only use Bluetooth mode")
+
+        /*
         // Check if user explicitly disabled USB monitoring (pressed Skip/Bluetooth button)
         val disableUsbMonitoring = intent.getBooleanExtra("DISABLE_USB_MONITORING", false)
 
@@ -185,6 +193,7 @@ class MainActivity : ComponentActivity() {
         } else {
             android.util.Log.d("MainActivity", "USB monitoring disabled - user explicitly skipped USB mode")
         }
+        */
 
         // Observe Bluetooth connection state to play beep and navigate
         lifecycleScope.launch {
@@ -222,10 +231,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        // USB monitoring disabled - no need to stop usbMonitor
+        /*
         // Stop USB monitoring when activity is destroyed (if it was initialized)
         if (::usbMonitor.isInitialized) {
             usbMonitor.stopMonitoring()
         }
+        */
     }
 
     private fun requestBluetoothPermissions() {
@@ -304,7 +316,10 @@ fun TrackpadScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 24.dp, vertical = 32.dp)
+                    .padding(
+                        horizontal = Dimens.mainHorizontalPadding(),
+                        vertical = Dimens.mainVerticalPadding()
+                    )
                     .graphicsLayer {
                         alpha = animatedContentAlpha
                         translationY = animatedContentOffset.toPx()
@@ -329,7 +344,7 @@ fun TrackpadScreen(
                     if (connectionState is BluetoothHidService.ConnectionState.Registered) {
                         Box(
                             modifier = Modifier
-                                .size(180.dp)
+                                .size(Dimens.statusIconGlowSize())
                                 .scale(animatedIconScale)
                                 .background(
                                     color = MaterialTheme.extendedColors.infoContainer.copy(alpha = glowAlpha),
@@ -341,7 +356,7 @@ fun TrackpadScreen(
                     // Main icon circle
                     Box(
                         modifier = Modifier
-                            .size(140.dp)
+                            .size(Dimens.statusIconSize())
                             .scale(animatedIconScale)
                             .background(
                                 color = when (connectionState) {
@@ -369,7 +384,7 @@ fun TrackpadScreen(
                                     painter = painterResource(id = R.drawable.img_macbook),
                                     contentDescription = "Waiting for Mac",
                                     modifier = Modifier
-                                        .size(90.dp)
+                                        .size(Dimens.macbookIconSize())
                                         .graphicsLayer {
                                             scaleX = animatedIconScale
                                             scaleY = animatedIconScale
@@ -395,7 +410,7 @@ fun TrackpadScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(Dimens.spacingXLarge()))
 
                 // Status Text with better typography
                 Text(
@@ -407,14 +422,14 @@ fun TrackpadScreen(
                         is BluetoothHidService.ConnectionState.Connected -> "Connected!"
                         is BluetoothHidService.ConnectionState.Error -> "Connection Error"
                     },
-                    style = MaterialTheme.typography.headlineMedium,
+                    fontSize = Dimens.statusTextSize(),
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.5).sp,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimens.spacingMedium()))
 
                 // Subtitle with improved line height
                 Text(
@@ -425,11 +440,11 @@ fun TrackpadScreen(
                         is BluetoothHidService.ConnectionState.Error -> state.message
                         else -> ""
                     },
-                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = Dimens.subtitleTextSize(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp,
-                    modifier = Modifier.padding(horizontal = 32.dp)
+                    lineHeight = Dimens.subtitleTextSize() * 1.5f,
+                    modifier = Modifier.padding(horizontal = Dimens.spacingXLarge())
                 )
 
                 // Animated help card for Registered state
@@ -442,11 +457,11 @@ fun TrackpadScreen(
                     exit = fadeOut(animationSpec = tween(300)) + slideOutVertically()
                 ) {
                     Column {
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(Dimens.spacingLarge()))
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 8.dp),
+                                .padding(horizontal = Dimens.spacingSmall()),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.extendedColors.infoContainer.copy(alpha = 0.9f)
                             ),
@@ -454,7 +469,7 @@ fun TrackpadScreen(
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(
-                                modifier = Modifier.padding(20.dp),
+                                modifier = Modifier.padding(Dimens.cardPadding()),
                                 horizontalAlignment = Alignment.Start
                             ) {
                                 Row(
@@ -501,7 +516,7 @@ fun TrackpadScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(Dimens.spacingLarge() + Dimens.spacingMedium()))
 
                 // Main Action Button with elevation and press effect
                 val buttonScale by animateFloatAsState(
@@ -532,7 +547,7 @@ fun TrackpadScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp)
+                        .height(Dimens.buttonHeight())
                         .scale(buttonScale),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -636,25 +651,55 @@ fun TrackpadScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Advanced toggle with subtle styling
-                TextButton(
-                    onClick = { showAdvanced = !showAdvanced },
-                    shape = RoundedCornerShape(12.dp)
+                // Settings and Advanced buttons row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    // Settings button
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(context, SettingsActivity::class.java)
+                            context.startActivity(intent)
+                        },
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(
-                            if (showAdvanced) "Advanced" else "Advanced",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            if (showAdvanced) "▲" else "▼",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "⚙️",
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                "Settings",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    // Advanced toggle with subtle styling
+                    TextButton(
+                        onClick = { showAdvanced = !showAdvanced },
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                if (showAdvanced) "Advanced" else "Advanced",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                if (showAdvanced) "▲" else "▼",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
 

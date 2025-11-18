@@ -3,12 +3,12 @@ package com.dps.droidpadmacos
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.hardware.usb.UsbManager
+// import android.hardware.usb.UsbManager  // USB detection disabled
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.dps.droidpadmacos.usb.UsbConnectionDetector
+// import com.dps.droidpadmacos.usb.UsbConnectionDetector  // USB detection disabled
 import com.dps.droidpadmacos.usb.UsbDebugHelper
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -49,6 +49,8 @@ class SplashActivity : ComponentActivity() {
                         UsbDebugHelper.printFullDiagnostics(this@SplashActivity)
                     }
 
+                    // USB detection disabled - always navigate to MainActivity for Bluetooth mode
+                    /*
                     // Check for USB connection first
                     val connectionInfo = UsbConnectionDetector.detectConnection(this@SplashActivity)
 
@@ -65,6 +67,11 @@ class SplashActivity : ComponentActivity() {
                         Log.d(TAG, "Navigating to MainActivity (Bluetooth)")
                         startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                     }
+                    */
+
+                    // Always go to MainActivity (Bluetooth mode only)
+                    Log.d(TAG, "Navigating to MainActivity (Bluetooth mode only)")
+                    startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                     finish()
                 }
             }

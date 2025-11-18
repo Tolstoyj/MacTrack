@@ -27,12 +27,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dps.droidpadmacos.bluetooth.HidConstants
 import com.dps.droidpadmacos.sensor.AirMouseSensor
 import com.dps.droidpadmacos.touchpad.EnhancedGestureDetector
+import com.dps.droidpadmacos.ui.Dimens
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 import com.dps.droidpadmacos.ui.theme.extendedColors
 import com.dps.droidpadmacos.viewmodel.TrackpadViewModel
@@ -56,7 +58,7 @@ class FullScreenTrackpadActivity : ComponentActivity() {
 
     // State management
     private val prefs by lazy {
-        getSharedPreferences("FullScreenTrackpadPrefs", Context.MODE_PRIVATE)
+        getSharedPreferences("DroidPadSettings", Context.MODE_PRIVATE)
     }
 
     companion object {
@@ -231,6 +233,18 @@ fun FullScreenTrackpad(
     var airMouseEnabled by remember { mutableStateOf(initialAirMouseEnabled) }
     var backgroundMode by remember { mutableStateOf(initialBackgroundMode) }
     var showAirMouseScreen by remember { mutableStateOf(false) }
+    var gestureInfo by remember { mutableStateOf("") }
+    var showInfo by remember { mutableStateOf(false) }
+
+    // Load user preferences
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val settingsPrefs = remember { context.getSharedPreferences("DroidPadSettings", Context.MODE_PRIVATE) }
+    val hideUIOverlay by remember { mutableStateOf(settingsPrefs.getBoolean("hide_ui_overlay", false)) }
+    val showGestureGuide by remember { mutableStateOf(settingsPrefs.getBoolean("show_gesture_guide", true)) }
+    val showConnectionStatus by remember { mutableStateOf(settingsPrefs.getBoolean("show_connection_status", true)) }
+    val minimalistMode by remember { mutableStateOf(settingsPrefs.getBoolean("minimalist_mode", false)) }
+    val trackpadSensitivity by remember { mutableFloatStateOf(settingsPrefs.getFloat("trackpad_sensitivity", 1.0f)) }
+    val scrollSpeed by remember { mutableFloatStateOf(settingsPrefs.getFloat("scroll_speed", 1.0f)) }
 
     // USB connection state
     val usbConnectionState by usbHidService?.connectionState?.collectAsState()
@@ -245,13 +259,17 @@ fun FullScreenTrackpad(
         }
     }
 
-    val gestureDetector = remember(usbHidService) {
+    val gestureDetector = remember(usbHidService, trackpadSensitivity, scrollSpeed) {
         EnhancedGestureDetector(
             onMove = { deltaX, deltaY ->
+                // Apply sensitivity setting
+                val adjustedDeltaX = (deltaX * trackpadSensitivity).toInt()
+                val adjustedDeltaY = (deltaY * trackpadSensitivity).toInt()
+
                 if (usbHidService != null) {
-                    usbHidService.sendMouseMovement(deltaX, deltaY)
+                    usbHidService.sendMouseMovement(adjustedDeltaX, adjustedDeltaY)
                 } else {
-                    viewModel.sendMouseMovement(deltaX, deltaY)
+                    viewModel.sendMouseMovement(adjustedDeltaX, adjustedDeltaY)
                 }
             },
             onLeftClick = {
@@ -274,10 +292,13 @@ fun FullScreenTrackpad(
                 }
             },
             onScroll = { deltaY ->
+                // Apply scroll speed setting
+                val adjustedDeltaY = (deltaY * scrollSpeed).toInt()
+
                 if (usbHidService != null) {
-                    usbHidService.sendScroll(deltaY)
+                    usbHidService.sendScroll(adjustedDeltaY)
                 } else {
-                    viewModel.sendScroll(deltaY)
+                    viewModel.sendScroll(adjustedDeltaY)
                 }
             },
             onThreeFingerSwipeUp = {
@@ -397,37 +418,38 @@ fun FullScreenTrackpad(
                 }
         )
 
-        // Top bar - ABOVE the trackpad area
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopStart)
-        ) {
-            // First row: Close button and connection status
-            Row(
+        // Top bar - ABOVE the trackpad area (conditionally shown)
+        if (!hideUIOverlay) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
+                    .align(Alignment.TopStart)
             ) {
-                // Close button - top left corner
-                IconButton(
-                    onClick = onBackPress,
+                // First row: Close button and connection status
+                Row(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        )
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "✕",
-                        fontSize = 24.sp,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                    // Close button - top left corner (always show if UI not hidden)
+                    IconButton(
+                        onClick = onBackPress,
+                        modifier = Modifier
+                            .size(Dimens.closeButtonSize())
+                            .background(
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    ) {
+                        Text(
+                            text = "✕",
+                            fontSize = 24.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
@@ -447,7 +469,10 @@ fun FullScreenTrackpad(
                             },
                             shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)
                         )
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .padding(
+                            horizontal = Dimens.connectionBadgePaddingHorizontal(),
+                            vertical = Dimens.connectionBadgePaddingVertical()
+                        )
                 ) {
                     Text(
                         text = when (connectionMode) {
@@ -509,11 +534,11 @@ fun FullScreenTrackpad(
                     shadowElevation = 8.dp
                 ) {
                 Column(
-                    modifier = Modifier.padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.padding(Dimens.keyboardPadding()),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())
                 ) {
                     // Row 1: Shortcuts
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
                         KeyboardKey("⌘C", "Copy") {
                             viewModel.sendCopy()
                             gestureInfo = "Copy (⌘C)"
@@ -537,7 +562,7 @@ fun FullScreenTrackpad(
                     }
 
                     // Row 2: Actions
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
                         KeyboardKey("⌘A", "All") {
                             viewModel.sendSelectAll()
                             gestureInfo = "Select All"
@@ -561,7 +586,7 @@ fun FullScreenTrackpad(
                     }
 
                     // Row 3: Special Keys
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
                         KeyboardKey("ESC", null) {
                             viewModel.sendKeyPress(HidConstants.KEY_ESCAPE)
                             gestureInfo = "Escape"
@@ -585,7 +610,7 @@ fun FullScreenTrackpad(
                     }
 
                     // Row 4: System Actions & Air Mouse
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.keyboardSpacing())) {
                         KeyboardKey("MC", null) {
                             viewModel.sendMissionControl()
                             gestureInfo = "Mission Control"
@@ -636,8 +661,8 @@ fun FullScreenTrackpad(
         }
         }
 
-        // Center gesture hint or Air Mouse indicator
-        if (gestureInfo.isEmpty() || airMouseEnabled) {
+        // Center gesture hint or Air Mouse indicator (conditionally shown)
+        if (!hideUIOverlay && !minimalistMode && (gestureInfo.isEmpty() || airMouseEnabled)) {
             Column(
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -692,12 +717,12 @@ fun FullScreenTrackpad(
                 } else {
                     Text(
                         text = "🖐️",
-                        fontSize = 60.sp
+                        fontSize = Dimens.gestureHintIconSize()
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimens.spacingMedium()))
                     Text(
                         text = "Touch anywhere to begin",
-                        fontSize = 18.sp,
+                        fontSize = Dimens.gestureHintTextSize(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
@@ -707,8 +732,9 @@ fun FullScreenTrackpad(
 
         // Gesture feedback removed - silent mode
 
-        // Bottom gesture guide (subtle)
-        Row(
+        // Bottom gesture guide (subtle) - conditionally shown based on settings
+        if (!hideUIOverlay && showGestureGuide) {
+            Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
@@ -727,24 +753,25 @@ fun FullScreenTrackpad(
             GestureGuideItem("3⬆", "MissCtr")
             GestureGuideItem("3⬇", "Desktop")
             GestureGuideItem("3⬅➡", "Spaces")
+            }
         }
     }
 }
 
 @Composable
-private fun GestureGuideItem(icon: String, label: String) {
+fun GestureGuideItem(icon: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(50.dp)
+        modifier = Modifier.width(Dimens.keyboardKeyWidth())
     ) {
         Text(
             text = icon,
-            fontSize = 12.sp,
+            fontSize = Dimens.gestureGuideIconSize(),
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = label,
-            fontSize = 9.sp,
+            fontSize = Dimens.gestureGuideTextSize(),
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
     }
@@ -853,10 +880,13 @@ private fun KeyboardKey(
         label = "keyElevation"
     )
 
+    val keyWidth = Dimens.keyboardKeyWidth()
+    val keyHeight = Dimens.keyboardKeyHeight()
+
     Box(
         modifier = Modifier
-            .width(width.dp)
-            .height(46.dp)
+            .width(keyWidth)
+            .height(keyHeight)
             .scale(scale)
     ) {
         // Outer glow effect
@@ -920,7 +950,7 @@ private fun KeyboardKey(
                 ) {
                     Text(
                         text = text,
-                        fontSize = 15.sp,
+                        fontSize = Dimens.keyboardKeyTextSize(),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                         style = androidx.compose.ui.text.TextStyle(
@@ -934,7 +964,7 @@ private fun KeyboardKey(
                     if (label != null) {
                         Text(
                             text = label,
-                            fontSize = 9.sp,
+                            fontSize = Dimens.keyboardLabelTextSize(),
                             color = Color(0xFFB0B0B0),
                             fontWeight = FontWeight.Medium
                         )

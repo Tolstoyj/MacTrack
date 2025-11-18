@@ -60,17 +60,19 @@ object UsbConnectionDetector {
     fun detectConnection(context: Context): ConnectionInfo {
         val battery = getBatteryStatus(context)
         val chargingViaUsb = battery.plugged == BatteryManager.BATTERY_PLUGGED_USB
-        val isPluggedIn = battery.plugged == BatteryManager.BATTERY_PLUGGED_USB ||
-                          battery.plugged == BatteryManager.BATTERY_PLUGGED_AC ||
-                          battery.plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS
         val adbConnected = isAdbConnected(context)
         val usbConfigured = isUsbConfigured()
 
-        val isConnected = chargingViaUsb || adbConnected || usbConfigured || isPluggedIn
+        // Only consider it connected if:
+        // 1. Charging via USB (not AC or wireless), OR
+        // 2. ADB is connected (strong indicator of USB data connection), OR
+        // 3. USB is configured (shows in sys filesystem)
+        val isConnected = chargingViaUsb || adbConnected || usbConfigured
 
-        // For USB_DATA, ADB connected is the strongest indicator
-        // Some devices report USB as AC when using fast charging, so we check if ANY power source is connected
-        val hasDataConnection = adbConnected || (usbConfigured && (chargingViaUsb || isPluggedIn))
+        // For USB_DATA, we require ADB to be connected as the primary indicator
+        // USB configured alone is not sufficient as it may be true even when just charging
+        // This prevents false positives when connected to wall chargers
+        val hasDataConnection = adbConnected
 
         val connectionType = when {
             hasDataConnection -> ConnectionType.USB_DATA
@@ -80,7 +82,7 @@ object UsbConnectionDetector {
         }
 
         Log.d(TAG, "USB Detection - Connected: $isConnected, Charging: $chargingViaUsb, " +
-                "ADB: $adbConnected, Configured: $usbConfigured, PluggedIn: $isPluggedIn, Type: $connectionType")
+                "ADB: $adbConnected, Configured: $usbConfigured, Type: $connectionType")
 
         return ConnectionInfo(
             isConnected = isConnected,
@@ -185,19 +187,20 @@ object UsbConnectionDetector {
      * This is a heuristic-based detection
      */
     fun isLikelyConnectedToMac(context: Context): Boolean {
-        // Check if device is connected via USB
+        // Check if device is connected via USB with data capability
         val connectionInfo = detectConnection(context)
-        if (!connectionInfo.isConnected) {
+
+        // Only consider it a computer if we have a USB DATA connection
+        // This prevents false positives from AC adapters or USB charging-only cables
+        if (connectionInfo.connectionType != ConnectionType.USB_DATA) {
             return false
         }
 
-        // Heuristics for Mac detection:
-        // 1. Check for specific USB vendor strings (requires root, so we skip this)
-        // 2. Check network interfaces for Mac-like patterns
-        // 3. For now, we assume any USB data connection could be a Mac
-
-        // If ADB is connected or USB is configured, there's a good chance it's a computer
-        return connectionInfo.isAdbConnected || connectionInfo.usbConfigured
+        // Even with USB_DATA connection, we can't definitively determine if it's a Mac
+        // ADB can be connected to any computer (Windows, Linux, Mac)
+        // For now, return false to avoid false positives - let user explicitly choose
+        // to use USB mode if they want
+        return false
     }
 
     /**
