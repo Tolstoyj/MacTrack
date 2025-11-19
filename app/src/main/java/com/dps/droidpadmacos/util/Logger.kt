@@ -15,8 +15,17 @@ import android.util.Log
 object Logger {
 
     private const val DEFAULT_TAG = "DroidPad"
-    // For now, we'll use a simple flag. BuildConfig will be generated after successful build
-    private val isDebug = true // Will be replaced with BuildConfig.DEBUG once generated
+    private val isDebug: Boolean by lazy {
+        try {
+            val clazz = Class.forName("com.dps.droidpadmacos.BuildConfig")
+            val debugField = clazz.getField("DEBUG")
+            debugField.getBoolean(null)
+        } catch (e: Exception) {
+            // If anything goes wrong, default to debug enabled to avoid hiding logs during development
+            Log.w(DEFAULT_TAG, "Unable to read BuildConfig.DEBUG, defaulting to debug logging", e)
+            true
+        }
+    }
 
     /**
      * Log debug message (only in debug builds)

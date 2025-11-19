@@ -165,7 +165,7 @@ private fun TrackpadArea(
     modifier: Modifier = Modifier
 ) {
     // Enhanced gesture detector for trackpad
-    val gestureDetector = remember {
+    val gestureDetector = remember(pointerSpeed, scrollSpeed, naturalScrolling, tapToClick) {
         EnhancedGestureDetector(
             onMove = { deltaX, deltaY ->
                 viewModel.sendMouseMovement(
@@ -192,6 +192,12 @@ private fun TrackpadArea(
             onDragStart = { /* Could trigger visual feedback */ },
             onDragEnd = { /* Could end visual feedback */ }
         )
+    }
+
+    DisposableEffect(gestureDetector) {
+        onDispose {
+            gestureDetector.reset()
+        }
     }
 
     // Trackpad touch surface

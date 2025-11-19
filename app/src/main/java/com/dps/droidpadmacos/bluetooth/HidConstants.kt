@@ -110,15 +110,15 @@ object HidConstants {
         0x75.toByte(), 0x01.toByte(),        //   Report Size (1)
         0x95.toByte(), 0x08.toByte(),        //   Report Count (8) - 8 bits for different controls
 
-        // Define each consumer control bit
+        // Define each consumer control bit (8 bits -> 2 media + mute + play + next/prev + brightness up/down)
         0x09.toByte(), 0xE9.toByte(),        //   Usage (Volume Increment)
         0x09.toByte(), 0xEA.toByte(),        //   Usage (Volume Decrement)
         0x09.toByte(), 0xE2.toByte(),        //   Usage (Mute)
         0x09.toByte(), 0xCD.toByte(),        //   Usage (Play/Pause)
         0x09.toByte(), 0xB5.toByte(),        //   Usage (Scan Next Track)
         0x09.toByte(), 0xB6.toByte(),        //   Usage (Scan Previous Track)
-        0x09.toByte(), 0xB7.toByte(),        //   Usage (Stop)
-        0x09.toByte(), 0xB8.toByte(),        //   Usage (Eject)
+        0x09.toByte(), 0x6F.toByte(),        //   Usage (Brightness Increment)
+        0x09.toByte(), 0x70.toByte(),        //   Usage (Brightness Decrement)
 
         0x81.toByte(), 0x02.toByte(),        //   Input (Data, Variable, Absolute)
         0xC0.toByte()                         // End Collection
@@ -285,8 +285,8 @@ object HidConstants {
     const val CONSUMER_PLAY_PAUSE = 0x08.toByte()     // Bit 3
     const val CONSUMER_NEXT_TRACK = 0x10.toByte()     // Bit 4
     const val CONSUMER_PREV_TRACK = 0x20.toByte()     // Bit 5
-    const val CONSUMER_STOP = 0x40.toByte()           // Bit 6
-    const val CONSUMER_EJECT = 0x80.toByte()          // Bit 7 (unsigned)
+    const val CONSUMER_BRIGHTNESS_UP = 0x40.toByte()  // Bit 6
+    const val CONSUMER_BRIGHTNESS_DOWN = 0x80.toByte() // Bit 7
     const val CONSUMER_NONE = 0x00.toByte()
 
     // Apple Vendor bit positions (for Report ID 4)

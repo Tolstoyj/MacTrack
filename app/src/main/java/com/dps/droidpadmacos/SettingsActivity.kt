@@ -66,6 +66,8 @@ fun SettingsScreen(
     var autoReconnect by remember { mutableStateOf(prefs.getBoolean("auto_reconnect", true)) }
     var keepScreenOn by remember { mutableStateOf(prefs.getBoolean("keep_screen_on", true)) }
     var minimalistMode by remember { mutableStateOf(prefs.getBoolean("minimalist_mode", false)) }
+    var touchFxEnabled by remember { mutableStateOf(prefs.getBoolean("touch_fx_enabled", true)) }
+    var touchFxStyle by remember { mutableStateOf(prefs.getInt("touch_fx_style", 1)) }
 
     Scaffold(
         topBar = {
@@ -342,6 +344,26 @@ fun SettingsScreen(
                     valueRange = 0.5f..1.0f,
                     displayValue = String.format("%.0f%%", prefs.getFloat("ui_opacity", 0.95f) * 100)
                 )
+
+                SwitchSetting(
+                    title = "Touch Effects",
+                    description = "Show animated glow under your fingers on the trackpad",
+                    checked = touchFxEnabled,
+                    onCheckedChange = {
+                        touchFxEnabled = it
+                        prefs.edit().putBoolean("touch_fx_enabled", it).apply()
+                    }
+                )
+
+                if (touchFxEnabled) {
+                    TouchEffectStyleSetting(
+                        selectedStyle = touchFxStyle,
+                        onStyleChange = { style ->
+                            touchFxStyle = style
+                            prefs.edit().putInt("touch_fx_style", style).apply()
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -574,6 +596,41 @@ fun BackgroundOption(
                     else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
+    }
+}
+
+@Composable
+fun TouchEffectStyleSetting(
+    selectedStyle: Int,
+    onStyleChange: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Touch Effect Style",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            BackgroundOption(
+                label = "Soft Glow",
+                isSelected = selectedStyle == 1,
+                onClick = { onStyleChange(1) }
+            )
+            BackgroundOption(
+                label = "Ripple",
+                isSelected = selectedStyle == 2,
+                onClick = { onStyleChange(2) }
+            )
+        }
     }
 }
 

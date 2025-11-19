@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
-import android.view.View
 import android.view.WindowManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -19,6 +18,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -43,6 +46,7 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -155,10 +159,12 @@ class FullScreenTrackpadActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Make full screen and keep screen on
-        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY)
+        // Make full screen and keep screen on using modern WindowInsets APIs
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.systemBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Initialize air mouse sensor
@@ -301,6 +307,8 @@ class FullScreenTrackpadActivity : ComponentActivity() {
         super.onDestroy()
         airMouseSensor?.stop()
         deskMouseSensor?.stop()
+        airMouseSensor = null
+        deskMouseSensor = null
     }
 }
 
@@ -387,6 +395,82 @@ private fun MacOSStatusBar(context: Context) {
 // KeyPreset data class is also in TrackpadSettingsDrawer.kt
 
 // Collapsible Volume/Brightness Control for Mac
+private data class TouchFxPoint(
+    val id: Int,
+    val x: Float,
+    val y: Float
+)
+
+@Composable
+private fun TouchFxLayer(
+    points: List<TouchFxPoint>,
+    style: Int,
+    modifier: Modifier = Modifier
+) {
+    if (points.isEmpty()) return
+
+    val density = LocalDensity.current
+    val transition = rememberInfiniteTransition(label = "touchFx")
+    val pulseScale by transition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "touchFxScale"
+    )
+    val pulseAlpha by transition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = EaseInOutCubic),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "touchFxAlpha"
+    )
+
+    Box(modifier = modifier) {
+        points.forEach { point ->
+            val xDp = with(density) { point.x.toDp() }
+            val yDp = with(density) { point.y.toDp() }
+
+            when (style) {
+                1 -> {
+                    // Soft radial glow
+                    Box(
+                        modifier = Modifier
+                            .offset(x = xDp - 40.dp, y = yDp - 40.dp)
+                            .size(80.dp * pulseScale)
+                            .background(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(
+                                        Color(0xFF00D9FF).copy(alpha = 0.30f * pulseAlpha),
+                                        Color.Transparent
+                                    )
+                                ),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                }
+                2 -> {
+                    // Ripple ring
+                    Box(
+                        modifier = Modifier
+                            .offset(x = xDp - 36.dp, y = yDp - 36.dp)
+                            .size(72.dp * pulseScale)
+                            .border(
+                                width = 2.dp,
+                                color = Color.White.copy(alpha = 0.45f * pulseAlpha),
+                                shape = androidx.compose.foundation.shape.CircleShape
+                            )
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun CollapsibleControl(
     icon: String,
@@ -1304,12 +1388,15 @@ fun FullScreenTrackpad(
             audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVolume.toFloat()
         )
     }
+    val touchFxEnabled by remember { mutableStateOf(settingsPrefs.getBoolean("touch_fx_enabled", true)) }
+    val touchFxStyle by remember { mutableStateOf(settingsPrefs.getInt("touch_fx_style", 1)) }
     val hideUIOverlay by remember { mutableStateOf(settingsPrefs.getBoolean("hide_ui_overlay", false)) }
     val showGestureGuide by remember { mutableStateOf(settingsPrefs.getBoolean("show_gesture_guide", true)) }
     val showConnectionStatus by remember { mutableStateOf(settingsPrefs.getBoolean("show_connection_status", true)) }
     val minimalistMode by remember { mutableStateOf(settingsPrefs.getBoolean("minimalist_mode", false)) }
     val trackpadSensitivity by remember { mutableFloatStateOf(settingsPrefs.getFloat("trackpad_sensitivity", 1.0f)) }
     val scrollSpeed by remember { mutableFloatStateOf(settingsPrefs.getFloat("scroll_speed", 1.0f)) }
+    var touchFxPoints by remember { mutableStateOf<List<TouchFxPoint>>(emptyList()) }
 
     // Handle air mouse toggle
     LaunchedEffect(airMouseEnabled) {
@@ -1397,6 +1484,13 @@ fun FullScreenTrackpad(
                 viewModel.sendMouseButtonRelease()
             }
         )
+    }
+
+    // Ensure any pending callbacks are cleaned up when composable leaves the composition
+    DisposableEffect(gestureDetector) {
+        onDispose {
+            gestureDetector.reset()
+        }
     }
 
     // Auto-hide info removed - silent mode
@@ -1491,9 +1585,49 @@ fun FullScreenTrackpad(
                     if (!userHasTouched && event.action == android.view.MotionEvent.ACTION_DOWN) {
                         userHasTouched = true
                     }
+
+                    if (touchFxEnabled) {
+                        when (event.actionMasked) {
+                            android.view.MotionEvent.ACTION_DOWN,
+                            android.view.MotionEvent.ACTION_POINTER_DOWN,
+                            android.view.MotionEvent.ACTION_MOVE -> {
+                                val points = mutableListOf<TouchFxPoint>()
+                                for (i in 0 until event.pointerCount) {
+                                    points.add(
+                                        TouchFxPoint(
+                                            id = event.getPointerId(i),
+                                            x = event.getX(i),
+                                            y = event.getY(i)
+                                        )
+                                    )
+                                }
+                                touchFxPoints = points
+                            }
+                            android.view.MotionEvent.ACTION_POINTER_UP -> {
+                                val pointerId = event.getPointerId(event.actionIndex)
+                                touchFxPoints = touchFxPoints.filterNot { it.id == pointerId }
+                            }
+                            android.view.MotionEvent.ACTION_UP,
+                            android.view.MotionEvent.ACTION_CANCEL -> {
+                                touchFxPoints = emptyList()
+                            }
+                        }
+                    } else if (touchFxPoints.isNotEmpty()) {
+                        // Clear any lingering effects when disabled
+                        touchFxPoints = emptyList()
+                    }
+
                     gestureDetector.handleTouchEvent(event)
                 }
         )
+
+        if (touchFxEnabled && touchFxStyle != 0 && touchFxPoints.isNotEmpty()) {
+            TouchFxLayer(
+                points = touchFxPoints,
+                style = touchFxStyle,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         // Top bar - ABOVE the trackpad area (conditionally shown)
         if (!hideUIOverlay) {

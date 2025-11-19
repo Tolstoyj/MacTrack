@@ -13,7 +13,9 @@
       "Bash(./gradlew compileDebugKotlin:*)",
       "Bash(./gradlew :app:compileDebugKotlin:*)",
       "Bash(tr:*)",
-      "Bash(fold:*)"
+      "Bash(fold:*)",
+      "WebFetch(domain:www.drakware.dev)",
+      "WebFetch(domain:notes.iopush.net)"
     ],
     "deny": [],
     "ask": []

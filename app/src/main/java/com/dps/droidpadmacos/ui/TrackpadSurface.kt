@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.dps.droidpadmacos.touchpad.TouchpadGestureDetector
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -46,6 +48,9 @@ fun TrackpadSurface(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .semantics {
+                        contentDescription = "Trackpad surface. Use touch gestures to control your Mac cursor."
+                    }
                     .shadow(
                         elevation = 8.dp,
                         shape = RoundedCornerShape(24.dp),

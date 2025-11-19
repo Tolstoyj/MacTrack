@@ -37,9 +37,14 @@ class SplashActivity : ComponentActivity() {
         setContent {
             DroidPadMacOSTheme {
                 SplashScreen {
-                    // Navigate to MainActivity
-                    Log.d(TAG, "Navigating to MainActivity")
-                    startActivity(Intent(this@SplashActivity, MainActivity::class.java))
+                    // Navigate to onboarding on first launch, otherwise main screen
+                    val target = if (OnboardingActivity.hasCompletedOnboarding(this@SplashActivity)) {
+                        MainActivity::class.java
+                    } else {
+                        OnboardingActivity::class.java
+                    }
+                    Log.d(TAG, "Navigating to ${target.simpleName}")
+                    startActivity(Intent(this@SplashActivity, target))
                     finish()
                 }
             }

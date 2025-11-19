@@ -56,8 +56,7 @@ class MainActivity : ComponentActivity() {
         if (allGranted) {
             // Permissions granted - now safe to initialize Bluetooth
             viewModel.attemptAutoReconnect()
-        } else
-        {
+        } else {
             android.util.Log.e("MainActivity", "Bluetooth permissions not granted")
         }
     }
@@ -87,9 +86,32 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @SuppressLint("MissingPermission")
     fun requestDiscoverable() {
         android.util.Log.d("MainActivity", "🔵 Requesting Bluetooth discoverability...")
+
+        // Ensure we have required Bluetooth permissions on Android 12+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val requiredPermissions = arrayOf(
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_ADVERTISE
+            )
+
+            val missingPermission = requiredPermissions.any {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }
+
+            if (missingPermission) {
+                android.util.Log.w("MainActivity", "Bluetooth permissions missing, requesting before discoverable")
+                requestBluetoothPermissions()
+                android.widget.Toast.makeText(
+                    this,
+                    "Bluetooth permissions are required to make device discoverable",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                return
+            }
+        }
 
         // Check if Bluetooth is enabled
         @Suppress("DEPRECATION")
@@ -154,10 +176,21 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             viewModel.connectionState.collect { state ->
                 if (state is BluetoothHidService.ConnectionState.Connected) {
+                    // Start foreground service to keep connection alive
+                    ConnectionForegroundService.start(
+                        context = this@MainActivity,
+                        deviceName = state.deviceName,
+                        deviceAddress = state.deviceAddress
+                    )
+
                     playConnectionBeep()
                     // Navigate to full-screen trackpad
                     val intent = Intent(this@MainActivity, FullScreenTrackpadActivity::class.java)
                     startActivity(intent)
+                } else if (state is BluetoothHidService.ConnectionState.Disconnected ||
+                    state is BluetoothHidService.ConnectionState.Error
+                ) {
+                    ConnectionForegroundService.stop(this@MainActivity)
                 }
             }
         }
@@ -192,7 +225,8 @@ class MainActivity : ComponentActivity() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(
                 Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_ADVERTISE
             )
         } else {
             arrayOf(

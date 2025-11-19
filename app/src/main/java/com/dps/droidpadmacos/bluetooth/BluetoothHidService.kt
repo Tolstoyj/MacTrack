@@ -1,5 +1,6 @@
 package com.dps.droidpadmacos.bluetooth
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -7,6 +8,9 @@ import android.bluetooth.BluetoothHidDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.core.content.ContextCompat
 import com.dps.droidpadmacos.util.Logger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,12 +126,32 @@ class BluetoothHidService private constructor(private val context: Context) {
         }
     }
 
+    private fun hasBluetoothConnectPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val granted = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                Logger.e(TAG, "BLUETOOTH_CONNECT permission not granted")
+                _connectionState.value = ConnectionState.Error("Bluetooth permissions required")
+            }
+            granted
+        } else {
+            true
+        }
+    }
+
     fun initialize() {
         try {
             if (bluetoothAdapter == null) {
                 val errorMsg = "Bluetooth is not supported on this device"
                 Logger.e(TAG, errorMsg)
                 _connectionState.value = ConnectionState.Error(errorMsg)
+                return
+            }
+
+            if (!hasBluetoothConnectPermission()) {
                 return
             }
 
@@ -174,6 +198,10 @@ class BluetoothHidService private constructor(private val context: Context) {
 
     fun registerHidDevice(): Boolean {
         return try {
+            if (!hasBluetoothConnectPermission()) {
+                return false
+            }
+
             val device = hidDevice
             if (device == null) {
                 val errorMsg = "HID Device profile not available. Please wait for Bluetooth initialization."
@@ -226,6 +254,10 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     fun unregisterHidDevice() {
+        if (!hasBluetoothConnectPermission()) {
+            return
+        }
+
         hidDevice?.unregisterApp()
         _isRegistered.value = false
         _connectionState.value = ConnectionState.Disconnected
@@ -233,6 +265,10 @@ class BluetoothHidService private constructor(private val context: Context) {
 
     fun connect(device: BluetoothDevice): Boolean {
         return try {
+            if (!hasBluetoothConnectPermission()) {
+                return false
+            }
+
             val hidDev = hidDevice
             if (hidDev == null) {
                 Logger.w(TAG, "Cannot connect: HID Device profile not available")
@@ -259,10 +295,17 @@ class BluetoothHidService private constructor(private val context: Context) {
 
     fun disconnect() {
         val device = connectedDevice ?: return
+        if (!hasBluetoothConnectPermission()) {
+            return
+        }
         hidDevice?.disconnect(device)
     }
 
     fun sendMouseReport(buttons: Byte, x: Byte, y: Byte, wheel: Byte): Boolean {
+        if (!hasBluetoothConnectPermission()) {
+            return false
+        }
+
         val device = connectedDevice
         val hid = hidDevice
 
@@ -287,6 +330,10 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     fun sendKeyboardReport(modifiers: Byte, key1: Byte = 0, key2: Byte = 0, key3: Byte = 0, key4: Byte = 0, key5: Byte = 0, key6: Byte = 0): Boolean {
+        if (!hasBluetoothConnectPermission()) {
+            return false
+        }
+
         val device = connectedDevice
         val hid = hidDevice
 
@@ -335,6 +382,10 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     fun sendConsumerReport(controlBits: Byte): Boolean {
+        if (!hasBluetoothConnectPermission()) {
+            return false
+        }
+
         val device = connectedDevice
         val hid = hidDevice
 
@@ -390,6 +441,10 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     fun sendAppleVendorReport(controlBits: Byte): Boolean {
+        if (!hasBluetoothConnectPermission()) {
+            return false
+        }
+
         val device = connectedDevice
         val hid = hidDevice
 
@@ -445,29 +500,29 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     suspend fun sendBrightnessUp() {
-        Logger.d(TAG, "=== Sending Brightness Up (Apple Vendor) ===")
+        Logger.d(TAG, "=== Sending Brightness Up (Consumer Control) ===")
 
         // Press
-        sendAppleVendorReport(HidConstants.APPLE_BRIGHTNESS_UP)
+        sendConsumerReport(HidConstants.CONSUMER_BRIGHTNESS_UP)
 
         // Small delay
         kotlinx.coroutines.delay(50)
 
         // Release
-        sendAppleVendorReport(HidConstants.APPLE_NONE)
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
     }
 
     suspend fun sendBrightnessDown() {
-        Logger.d(TAG, "=== Sending Brightness Down (Apple Vendor) ===")
+        Logger.d(TAG, "=== Sending Brightness Down (Consumer Control) ===")
 
         // Press
-        sendAppleVendorReport(HidConstants.APPLE_BRIGHTNESS_DOWN)
+        sendConsumerReport(HidConstants.CONSUMER_BRIGHTNESS_DOWN)
 
         // Small delay
         kotlinx.coroutines.delay(50)
 
         // Release
-        sendAppleVendorReport(HidConstants.APPLE_NONE)
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
     }
 
     suspend fun sendMissionControl() {
@@ -508,6 +563,10 @@ class BluetoothHidService private constructor(private val context: Context) {
 
     fun resetAndClearConnections(): Boolean {
         try {
+            if (!hasBluetoothConnectPermission()) {
+                return false
+            }
+
             Logger.d(TAG, "Resetting all connections...")
 
             // First disconnect current device
@@ -546,6 +605,10 @@ class BluetoothHidService private constructor(private val context: Context) {
     }
 
     fun cleanup() {
+        if (!hasBluetoothConnectPermission()) {
+            return
+        }
+
         unregisterHidDevice()
         bluetoothAdapter?.closeProfileProxy(BluetoothProfile.HID_DEVICE, hidDevice)
     }

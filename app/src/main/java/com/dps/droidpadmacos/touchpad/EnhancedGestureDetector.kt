@@ -311,7 +311,7 @@ class EnhancedGestureDetector(
         return sqrt(dx * dx + dy * dy)
     }
 
-    private fun reset() {
+    fun reset() {
         // Cancel any pending drag timer
         handler.removeCallbacks(dragTimer)
 

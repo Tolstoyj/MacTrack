@@ -1,6 +1,5 @@
 package com.dps.droidpadmacos.viewmodel
 
-import android.annotation.SuppressLint
 import android.app.Application
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
@@ -10,12 +9,13 @@ import androidx.lifecycle.viewModelScope
 import com.dps.droidpadmacos.bluetooth.BluetoothHidService
 import com.dps.droidpadmacos.bluetooth.HidConstants
 import com.dps.droidpadmacos.data.DeviceHistoryManager
+import com.dps.droidpadmacos.util.RetryManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 
-@SuppressLint("MissingPermission")
 class TrackpadViewModel(application: Application) : AndroidViewModel(application) {
 
     private val bluetoothService = BluetoothHidService.getInstance(application)
@@ -36,19 +36,47 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     // Current mouse button state so movement reports include pressed buttons (for drag/select)
     private val currentButtons = AtomicInteger(HidConstants.BUTTON_NONE.toInt())
 
-    init {
-        bluetoothService.initialize()
+    // Connection retry management
+    private val retryManager = RetryManager()
+    private var autoReconnectJob: Job? = null
+    private var shouldAutoReconnect = false
+    private var userInitiatedDisconnect = false
+    private var lastConnectedDeviceAddress: String? = null
 
+    init {
         // Observe connection state and save connected devices
         viewModelScope.launch {
+            var previousState: BluetoothHidService.ConnectionState? = null
+
             connectionState.collect { state ->
                 android.util.Log.d("TrackpadViewModel", "Connection state changed: $state")
                 if (state is BluetoothHidService.ConnectionState.Connected) {
                     android.util.Log.d("TrackpadViewModel", "Saving device: ${state.deviceName} (${state.deviceAddress})")
                     if (state.deviceAddress.isNotEmpty()) {
                         deviceHistoryManager.addDevice(state.deviceName, state.deviceAddress)
+                        lastConnectedDeviceAddress = state.deviceAddress
+                    }
+
+                    // Successfully connected - stop any pending auto-reconnect attempts
+                    stopAutoReconnect()
+                    // Once we have a successful connection, we can auto-reconnect on future drops
+                    userInitiatedDisconnect = false
+                    shouldAutoReconnect = true
+                } else if (state is BluetoothHidService.ConnectionState.Disconnected ||
+                    state is BluetoothHidService.ConnectionState.Error
+                ) {
+                    val wasPreviouslyConnected = previousState is BluetoothHidService.ConnectionState.Connected
+
+                    if (wasPreviouslyConnected &&
+                        shouldAutoReconnect &&
+                        !userInitiatedDisconnect
+                    ) {
+                        android.util.Log.d("TrackpadViewModel", "Connection lost unexpectedly, starting auto-reconnect")
+                        startAutoReconnect()
                     }
                 }
+
+                previousState = state
             }
         }
     }
@@ -63,6 +91,10 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
 
     fun unregisterDevice() {
         viewModelScope.launch {
+            // Treat unregister as an explicit user action - don't auto-reconnect
+            userInitiatedDisconnect = true
+            shouldAutoReconnect = false
+            stopAutoReconnect()
             bluetoothService.unregisterHidDevice()
         }
     }
@@ -78,6 +110,10 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
 
     fun disconnect() {
         viewModelScope.launch {
+            // Explicit user disconnect - disable auto-reconnect for this session
+            userInitiatedDisconnect = true
+            shouldAutoReconnect = false
+            stopAutoReconnect()
             bluetoothService.disconnect()
         }
     }
@@ -314,6 +350,11 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
         android.util.Log.d("TrackpadViewModel", "Is registered: ${isRegistered.value}")
         android.util.Log.d("TrackpadViewModel", "Is profile ready: ${isProfileReady.value}")
 
+        // Enable auto-reconnect for this target
+        shouldAutoReconnect = true
+        userInitiatedDisconnect = false
+        lastConnectedDeviceAddress = address
+
         // Check if HID is registered
         if (!isRegistered.value) {
             android.util.Log.w("TrackpadViewModel", "HID device not registered! Registering first...")
@@ -351,6 +392,9 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     fun resetAllConnections() {
         viewModelScope.launch {
             android.util.Log.d("TrackpadViewModel", "Resetting all connections and clearing history...")
+            userInitiatedDisconnect = true
+            shouldAutoReconnect = false
+            stopAutoReconnect()
             bluetoothService.resetAndClearConnections()
             deviceHistoryManager.clearHistory()
         }
@@ -359,6 +403,9 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     fun attemptAutoReconnect() {
         viewModelScope.launch {
             android.util.Log.d("TrackpadViewModel", "Attempting auto-reconnect...")
+
+            // Initialize Bluetooth HID profile (requires permissions to be granted)
+            bluetoothService.initialize()
 
             // Wait for HID profile to be ready (with timeout)
             android.util.Log.d("TrackpadViewModel", "Waiting for HID profile to be ready...")
@@ -387,7 +434,8 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
             }
 
             // Try to connect to last device
-            val lastDeviceAddress = deviceHistoryManager.getLastConnectedDeviceAddress()
+            val lastDeviceAddress = lastConnectedDeviceAddress
+                ?: deviceHistoryManager.getLastConnectedDeviceAddress()
             if (lastDeviceAddress != null) {
                 android.util.Log.d("TrackpadViewModel", "Attempting to reconnect to last device: $lastDeviceAddress")
                 connectToDeviceByAddress(lastDeviceAddress)
@@ -395,6 +443,49 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
                 android.util.Log.d("TrackpadViewModel", "No last device found, waiting for manual connection")
             }
         }
+    }
+
+    private fun startAutoReconnect() {
+        if (autoReconnectJob?.isActive == true) {
+            android.util.Log.d("TrackpadViewModel", "Auto-reconnect already in progress")
+            return
+        }
+
+        val targetAddress = lastConnectedDeviceAddress
+            ?: deviceHistoryManager.getLastConnectedDeviceAddress()
+
+        if (targetAddress == null) {
+            android.util.Log.w("TrackpadViewModel", "No device available for auto-reconnect")
+            return
+        }
+
+        autoReconnectJob = viewModelScope.launch {
+            retryManager.reset()
+
+            while (shouldAutoReconnect && retryManager.canRetry()) {
+                val canContinue = retryManager.waitForRetry()
+                if (!canContinue || !shouldAutoReconnect) {
+                    break
+                }
+
+                android.util.Log.d(
+                    "TrackpadViewModel",
+                    "Auto-reconnect attempt ${retryManager.getCurrentRetry()} to $targetAddress"
+                )
+
+                val success = connectToDeviceByAddress(targetAddress)
+                if (success) {
+                    // Connection attempt dispatched - actual result handled via connectionState
+                    // If we truly reconnect, the Connected state will stop retries
+                }
+            }
+        }
+    }
+
+    private fun stopAutoReconnect() {
+        autoReconnectJob?.cancel()
+        autoReconnectJob = null
+        retryManager.reset()
     }
 
     override fun onCleared() {
