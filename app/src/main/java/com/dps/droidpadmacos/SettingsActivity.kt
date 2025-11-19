@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.dps.droidpadmacos.settings.KeyboardLayout
+import com.dps.droidpadmacos.settings.KeyboardTheme
+import com.dps.droidpadmacos.settings.HapticIntensity
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 
 class SettingsActivity : ComponentActivity() {
@@ -235,6 +238,109 @@ fun SettingsScreen(
                         enableSoundFeedback = it
                         prefs.edit().putBoolean("sound_feedback", it).apply()
                     }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Keyboard Settings
+            SettingsSection(title = "Keyboard") {
+                KeyboardLayoutSetting(
+                    prefs = prefs
+                )
+
+                KeyboardThemeSetting(
+                    prefs = prefs
+                )
+
+                SliderSetting(
+                    title = "Keyboard Size",
+                    value = prefs.getFloat("keyboard_scale", 1.0f),
+                    onValueChange = {
+                        prefs.edit().putFloat("keyboard_scale", it).apply()
+                    },
+                    valueRange = 0.6f..1.4f,
+                    displayValue = String.format("%.0f%%", prefs.getFloat("keyboard_scale", 1.0f) * 100)
+                )
+
+                SwitchSetting(
+                    title = "Show Key Hints",
+                    description = "Display secondary key labels",
+                    checked = prefs.getBoolean("show_keyboard_hints", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("show_keyboard_hints", it).apply()
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Advanced Trackpad Settings
+            SettingsSection(title = "Advanced Trackpad") {
+                SwitchSetting(
+                    title = "Natural Scrolling",
+                    description = "Scroll direction follows finger movement",
+                    checked = prefs.getBoolean("natural_scrolling", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("natural_scrolling", it).apply()
+                    }
+                )
+
+                SwitchSetting(
+                    title = "Tap to Click",
+                    description = "Single tap performs a click",
+                    checked = prefs.getBoolean("tap_to_click", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("tap_to_click", it).apply()
+                    }
+                )
+
+                SwitchSetting(
+                    title = "Two-Finger Right Click",
+                    description = "Tap with two fingers for right click",
+                    checked = prefs.getBoolean("two_finger_right_click", true),
+                    onCheckedChange = {
+                        prefs.edit().putBoolean("two_finger_right_click", it).apply()
+                    }
+                )
+
+                SliderSetting(
+                    title = "Air Mouse Sensitivity",
+                    value = prefs.getFloat("air_mouse_sensitivity", 1.5f),
+                    onValueChange = {
+                        prefs.edit().putFloat("air_mouse_sensitivity", it).apply()
+                    },
+                    valueRange = 0.5f..5.0f,
+                    displayValue = String.format("%.1fx", prefs.getFloat("air_mouse_sensitivity", 1.5f))
+                )
+
+                SliderSetting(
+                    title = "Desk Mouse Sensitivity",
+                    value = prefs.getFloat("desk_mouse_sensitivity", 2500f),
+                    onValueChange = {
+                        prefs.edit().putFloat("desk_mouse_sensitivity", it).apply()
+                    },
+                    valueRange = 1000f..5000f,
+                    displayValue = String.format("%.0f", prefs.getFloat("desk_mouse_sensitivity", 2500f))
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Haptic & Visual Feedback
+            SettingsSection(title = "Feedback & Appearance") {
+                HapticIntensitySetting(
+                    prefs = prefs
+                )
+
+                SliderSetting(
+                    title = "UI Opacity",
+                    value = prefs.getFloat("ui_opacity", 0.95f),
+                    onValueChange = {
+                        prefs.edit().putFloat("ui_opacity", it).apply()
+                    },
+                    valueRange = 0.5f..1.0f,
+                    displayValue = String.format("%.0f%%", prefs.getFloat("ui_opacity", 0.95f) * 100)
                 )
             }
 
@@ -467,6 +573,299 @@ fun BackgroundOption(
             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+    }
+}
+
+@Composable
+fun KeyboardLayoutSetting(prefs: SharedPreferences) {
+    var selectedLayout by remember {
+        mutableStateOf(
+            KeyboardLayout.valueOf(
+                prefs.getString("keyboard_layout", KeyboardLayout.COMPACT.name) ?: KeyboardLayout.COMPACT.name
+            )
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Keyboard Layout",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LayoutOption(
+                    label = "Compact",
+                    icon = "⌨️",
+                    isSelected = selectedLayout == KeyboardLayout.COMPACT,
+                    onClick = {
+                        selectedLayout = KeyboardLayout.COMPACT
+                        prefs.edit().putString("keyboard_layout", KeyboardLayout.COMPACT.name).apply()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutOption(
+                    label = "QWERTY",
+                    icon = "🔤",
+                    isSelected = selectedLayout == KeyboardLayout.FULL_QWERTY,
+                    onClick = {
+                        selectedLayout = KeyboardLayout.FULL_QWERTY
+                        prefs.edit().putString("keyboard_layout", KeyboardLayout.FULL_QWERTY.name).apply()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LayoutOption(
+                    label = "Numeric",
+                    icon = "🔢",
+                    isSelected = selectedLayout == KeyboardLayout.NUMERIC,
+                    onClick = {
+                        selectedLayout = KeyboardLayout.NUMERIC
+                        prefs.edit().putString("keyboard_layout", KeyboardLayout.NUMERIC.name).apply()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+                LayoutOption(
+                    label = "Function",
+                    icon = "Fn",
+                    isSelected = selectedLayout == KeyboardLayout.FUNCTION_KEYS,
+                    onClick = {
+                        selectedLayout = KeyboardLayout.FUNCTION_KEYS
+                        prefs.edit().putString("keyboard_layout", KeyboardLayout.FUNCTION_KEYS.name).apply()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            LayoutOption(
+                label = "Arrow Keys",
+                icon = "⬆️",
+                isSelected = selectedLayout == KeyboardLayout.ARROWS,
+                onClick = {
+                    selectedLayout = KeyboardLayout.ARROWS
+                    prefs.edit().putString("keyboard_layout", KeyboardLayout.ARROWS.name).apply()
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+fun LayoutOption(
+    label: String,
+    icon: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surface,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() },
+        shadowElevation = if (isSelected) 4.dp else 0.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = icon,
+                fontSize = 20.sp,
+                modifier = Modifier.padding(end = 8.dp)
+            )
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+fun KeyboardThemeSetting(prefs: SharedPreferences) {
+    var selectedTheme by remember {
+        mutableStateOf(
+            KeyboardTheme.valueOf(
+                prefs.getString("keyboard_theme", KeyboardTheme.DARK.name) ?: KeyboardTheme.DARK.name
+            )
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Keyboard Theme",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ThemeOption(
+                label = "Dark",
+                color = Color(0xFF2C2C2E),
+                isSelected = selectedTheme == KeyboardTheme.DARK,
+                onClick = {
+                    selectedTheme = KeyboardTheme.DARK
+                    prefs.edit().putString("keyboard_theme", KeyboardTheme.DARK.name).apply()
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeOption(
+                label = "Light",
+                color = Color(0xFFE5E5EA),
+                isSelected = selectedTheme == KeyboardTheme.LIGHT,
+                onClick = {
+                    selectedTheme = KeyboardTheme.LIGHT
+                    prefs.edit().putString("keyboard_theme", KeyboardTheme.LIGHT.name).apply()
+                },
+                modifier = Modifier.weight(1f)
+            )
+            ThemeOption(
+                label = "Colorful",
+                color = Color(0xFF667EEA),
+                isSelected = selectedTheme == KeyboardTheme.COLORFUL,
+                onClick = {
+                    selectedTheme = KeyboardTheme.COLORFUL
+                    prefs.edit().putString("keyboard_theme", KeyboardTheme.COLORFUL.name).apply()
+                },
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+fun ThemeOption(
+    label: String,
+    color: Color,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(color)
+                .then(
+                    if (isSelected) {
+                        Modifier.padding(4.dp)
+                    } else {
+                        Modifier
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Text("✓", fontSize = 24.sp, color = Color.White)
+            }
+        }
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+@Composable
+fun HapticIntensitySetting(prefs: SharedPreferences) {
+    var selectedIntensity by remember {
+        mutableStateOf(
+            HapticIntensity.valueOf(
+                prefs.getString("haptic_intensity", HapticIntensity.MEDIUM.name) ?: HapticIntensity.MEDIUM.name
+            )
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "Haptic Feedback Intensity",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            HapticIntensity.values().forEach { intensity ->
+                IntensityOption(
+                    label = intensity.name.lowercase().replaceFirstChar { it.uppercase() },
+                    isSelected = selectedIntensity == intensity,
+                    onClick = {
+                        selectedIntensity = intensity
+                        prefs.edit().putString("haptic_intensity", intensity.name).apply()
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun IntensityOption(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surface,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            color = if (isSelected) MaterialTheme.colorScheme.onPrimary
+                    else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         )
     }
 }

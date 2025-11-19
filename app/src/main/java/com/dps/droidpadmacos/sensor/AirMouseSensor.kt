@@ -24,7 +24,8 @@ class AirMouseSensor(
     }
 
     private var isActive = false
-    private var sensitivity = 30f  // Increased for more responsive movement
+    var sensitivity = 30f  // Increased for more responsive movement
+        private set  // Only allow setting through setSensitivity method
 
     // Rotation rates
     private var rotationX = 0f

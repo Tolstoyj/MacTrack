@@ -334,6 +334,142 @@ class BluetoothHidService private constructor(private val context: Context) {
         Logger.d(TAG, "Key release result: $releaseResult")
     }
 
+    fun sendConsumerReport(controlBits: Byte): Boolean {
+        val device = connectedDevice
+        val hid = hidDevice
+
+        if (device == null || hid == null) {
+            Logger.w(TAG, "Cannot send consumer report: device or HID not available")
+            return false
+        }
+
+        // Consumer report format: [control bits] - 1 byte where each bit is a different control
+        val report = byteArrayOf(controlBits)
+
+        Logger.d(TAG, "Sending consumer report - Control bits: ${controlBits.toInt()}")
+        return hid.sendReport(device, HidConstants.REPORT_ID_CONSUMER.toInt(), report)
+    }
+
+    suspend fun sendPlayPause() {
+        Logger.d(TAG, "=== Sending Play/Pause (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_PLAY_PAUSE)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    suspend fun sendNextTrack() {
+        Logger.d(TAG, "=== Sending Next Track (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_NEXT_TRACK)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    suspend fun sendPreviousTrack() {
+        Logger.d(TAG, "=== Sending Previous Track (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_PREV_TRACK)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    fun sendAppleVendorReport(controlBits: Byte): Boolean {
+        val device = connectedDevice
+        val hid = hidDevice
+
+        if (device == null || hid == null) {
+            Logger.w(TAG, "Cannot send Apple vendor report: device or HID not available")
+            return false
+        }
+
+        // Apple vendor report format: [control bits] - 1 byte where each bit is a different control
+        val report = byteArrayOf(controlBits)
+
+        Logger.d(TAG, "Sending Apple vendor report - Control bits: ${controlBits.toInt()}")
+        return hid.sendReport(device, HidConstants.REPORT_ID_APPLE_VENDOR.toInt(), report)
+    }
+
+    suspend fun sendVolumeUp() {
+        Logger.d(TAG, "=== Sending Volume Up (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_VOLUME_UP)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    suspend fun sendVolumeDown() {
+        Logger.d(TAG, "=== Sending Volume Down (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_VOLUME_DOWN)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    suspend fun sendMute() {
+        Logger.d(TAG, "=== Sending Mute (Consumer Control) ===")
+
+        // Press
+        sendConsumerReport(HidConstants.CONSUMER_MUTE)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendConsumerReport(HidConstants.CONSUMER_NONE)
+    }
+
+    suspend fun sendBrightnessUp() {
+        Logger.d(TAG, "=== Sending Brightness Up (Apple Vendor) ===")
+
+        // Press
+        sendAppleVendorReport(HidConstants.APPLE_BRIGHTNESS_UP)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendAppleVendorReport(HidConstants.APPLE_NONE)
+    }
+
+    suspend fun sendBrightnessDown() {
+        Logger.d(TAG, "=== Sending Brightness Down (Apple Vendor) ===")
+
+        // Press
+        sendAppleVendorReport(HidConstants.APPLE_BRIGHTNESS_DOWN)
+
+        // Small delay
+        kotlinx.coroutines.delay(50)
+
+        // Release
+        sendAppleVendorReport(HidConstants.APPLE_NONE)
+    }
+
     suspend fun sendMissionControl() {
         // Mac Mission Control: Ctrl + Up Arrow
         Logger.d(TAG, "=== Sending Mission Control command (Ctrl+Up) ===")

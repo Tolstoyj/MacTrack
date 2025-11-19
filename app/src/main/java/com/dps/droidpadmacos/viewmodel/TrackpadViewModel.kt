@@ -33,6 +33,9 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     private val accumulatedY = AtomicInteger(0)
     private val SCALE_FACTOR = 100 // To convert float to int for atomic operations
 
+    // Current mouse button state so movement reports include pressed buttons (for drag/select)
+    private val currentButtons = AtomicInteger(HidConstants.BUTTON_NONE.toInt())
+
     init {
         bluetoothService.initialize()
 
@@ -93,9 +96,13 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
         val sendY = currentY.coerceIn(-127, 127).toByte()
 
         if (sendX != 0.toByte() || sendY != 0.toByte()) {
-            android.util.Log.d("TrackpadViewModel", "Sending to BT - X: $sendX, Y: $sendY (input was X:$deltaX, Y:$deltaY)")
+            val buttons = currentButtons.get().toByte()
+            android.util.Log.d(
+                "TrackpadViewModel",
+                "Sending to BT - X: $sendX, Y: $sendY, Buttons: $buttons (input was X:$deltaX, Y:$deltaY)"
+            )
             bluetoothService.sendMouseReport(
-                HidConstants.BUTTON_NONE,
+                buttons,
                 sendX,
                 sendY,
                 0
@@ -110,42 +117,22 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     fun sendLeftClick() {
         viewModelScope.launch {
             // Press
-            bluetoothService.sendMouseReport(
-                HidConstants.BUTTON_LEFT,
-                0,
-                0,
-                0
-            )
+            sendMouseButtonPress(HidConstants.BUTTON_LEFT)
             // Small delay
             kotlinx.coroutines.delay(50)
             // Release
-            bluetoothService.sendMouseReport(
-                HidConstants.BUTTON_NONE,
-                0,
-                0,
-                0
-            )
+            sendMouseButtonRelease()
         }
     }
 
     fun sendRightClick() {
         viewModelScope.launch {
             // Press
-            bluetoothService.sendMouseReport(
-                HidConstants.BUTTON_RIGHT,
-                0,
-                0,
-                0
-            )
+            sendMouseButtonPress(HidConstants.BUTTON_RIGHT)
             // Small delay
             kotlinx.coroutines.delay(50)
             // Release
-            bluetoothService.sendMouseReport(
-                HidConstants.BUTTON_NONE,
-                0,
-                0,
-                0
-            )
+            sendMouseButtonRelease()
         }
     }
 
@@ -199,16 +186,25 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun sendKeyPress(keyCode: Byte) {
+        // Convenience overload for keys without modifiers
+        sendKeyPress(HidConstants.MOD_NONE, keyCode)
+    }
+
+    fun sendKeyPress(modifiers: Byte, keyCode: Byte) {
         viewModelScope.launch {
-            bluetoothService.sendKeyPress(HidConstants.MOD_NONE, keyCode)
+            bluetoothService.sendKeyPress(modifiers, keyCode)
         }
     }
 
     fun sendMouseButtonPress(button: Byte) {
-        bluetoothService.sendMouseReport(button, 0, 0, 0)
+        // Update current button state and send a button-only report
+        val newButtons = currentButtons.updateAndGet { it or button.toInt() }.toByte()
+        bluetoothService.sendMouseReport(newButtons, 0, 0, 0)
     }
 
     fun sendMouseButtonRelease() {
+        // Clear all buttons and send a button-only report
+        currentButtons.set(HidConstants.BUTTON_NONE.toInt())
         bluetoothService.sendMouseReport(HidConstants.BUTTON_NONE, 0, 0, 0)
     }
 
@@ -258,6 +254,56 @@ class TrackpadViewModel(application: Application) : AndroidViewModel(application
     fun sendNewTab() {
         viewModelScope.launch {
             bluetoothService.sendKeyPress(HidConstants.MOD_LEFT_GUI, HidConstants.KEY_T)
+        }
+    }
+
+    // Mac Volume Controls (Consumer Control HID)
+    fun sendVolumeUp() {
+        viewModelScope.launch {
+            bluetoothService.sendVolumeUp()
+        }
+    }
+
+    fun sendVolumeDown() {
+        viewModelScope.launch {
+            bluetoothService.sendVolumeDown()
+        }
+    }
+
+    fun sendMute() {
+        viewModelScope.launch {
+            bluetoothService.sendMute()
+        }
+    }
+
+    fun sendPlayPause() {
+        viewModelScope.launch {
+            bluetoothService.sendPlayPause()
+        }
+    }
+
+    fun sendNextTrack() {
+        viewModelScope.launch {
+            bluetoothService.sendNextTrack()
+        }
+    }
+
+    fun sendPreviousTrack() {
+        viewModelScope.launch {
+            bluetoothService.sendPreviousTrack()
+        }
+    }
+
+    // Mac Brightness Controls (Apple Vendor HID)
+    fun sendBrightnessUp() {
+        viewModelScope.launch {
+            bluetoothService.sendBrightnessUp()
+        }
+    }
+
+    fun sendBrightnessDown() {
+        viewModelScope.launch {
+            bluetoothService.sendBrightnessDown()
         }
     }
 
