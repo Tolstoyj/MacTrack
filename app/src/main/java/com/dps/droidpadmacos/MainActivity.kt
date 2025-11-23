@@ -16,31 +16,28 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bluetooth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.dps.droidpadmacos.bluetooth.BluetoothHidService
-import com.dps.droidpadmacos.ui.Dimens
-import com.dps.droidpadmacos.ui.RecentDevicesList
 import com.dps.droidpadmacos.ui.theme.DroidPadMacOSTheme
 import com.dps.droidpadmacos.ui.theme.extendedColors
 import com.dps.droidpadmacos.viewmodel.TrackpadViewModel
@@ -262,461 +259,223 @@ fun TrackpadScreen(
     var showAdvanced by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // Smooth animated values for state transitions
-    val targetIconScale = if (connectionState is BluetoothHidService.ConnectionState.Registered) 1.08f else 1f
-    val animatedIconScale by animateFloatAsState(
-        targetValue = targetIconScale,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "iconScale"
-    )
-
-    val targetContentAlpha = 1f
-    val animatedContentAlpha by animateFloatAsState(
-        targetValue = targetContentAlpha,
-        animationSpec = tween(600, easing = LinearOutSlowInEasing),
-        label = "contentAlpha"
-    )
-
-    val targetContentOffset = 0.dp
-    val animatedContentOffset by animateDpAsState(
-        targetValue = targetContentOffset,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "contentOffset"
-    )
+    val backgroundBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF0A0F16),
+                Color(0xFF0F1621)
+            )
+        )
+    }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush),
+        containerColor = Color.Transparent
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundBrush)
+                .padding(paddingValues)
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(
-                        horizontal = Dimens.mainHorizontalPadding(),
-                        vertical = Dimens.mainVerticalPadding()
-                    )
-                    .graphicsLayer {
-                        alpha = animatedContentAlpha
-                        translationY = animatedContentOffset.toPx()
-                    },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .padding(horizontal = 22.dp)
+                    .statusBarsPadding()
+                    .navigationBarsPadding(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Animated Status Icon with glow effect
-                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                val glowAlpha by infiniteTransition.animateFloat(
-                    initialValue = 0.2f,
-                    targetValue = 0.5f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(2000, easing = EaseInOutCubic),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "glow"
-                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Box(contentAlignment = Alignment.Center) {
-                    // Outer glow
-                    if (connectionState is BluetoothHidService.ConnectionState.Registered) {
-                        Box(
-                            modifier = Modifier
-                                .size(Dimens.statusIconGlowSize())
-                                .scale(animatedIconScale)
-                                .background(
-                                    color = MaterialTheme.extendedColors.infoContainer.copy(alpha = glowAlpha),
-                                    shape = androidx.compose.foundation.shape.CircleShape
-                                )
-                        )
-                    }
-
-                    // Main icon circle
-                    Box(
-                        modifier = Modifier
-                            .size(Dimens.statusIconSize())
-                            .scale(animatedIconScale)
-                            .background(
-                                color = when (connectionState) {
-                                    is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.successContainer
-                                    is BluetoothHidService.ConnectionState.Registered -> MaterialTheme.extendedColors.infoContainer
-                                    is BluetoothHidService.ConnectionState.Error -> MaterialTheme.colorScheme.errorContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
-                                },
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            )
-                            .border(
-                                width = 3.dp,
-                                color = when (connectionState) {
-                                    is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.success.copy(alpha = 0.3f)
-                                    is BluetoothHidService.ConnectionState.Registered -> MaterialTheme.extendedColors.info.copy(alpha = 0.3f)
-                                    else -> Color.Transparent
-                                },
-                                shape = androidx.compose.foundation.shape.CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        when (connectionState) {
-                            is BluetoothHidService.ConnectionState.Registered -> {
-                                Image(
-                                    painter = painterResource(id = R.drawable.img_macbook),
-                                    contentDescription = "Waiting for Mac",
-                                    modifier = Modifier
-                                        .size(Dimens.macbookIconSize())
-                                        .graphicsLayer {
-                                            scaleX = animatedIconScale
-                                            scaleY = animatedIconScale
-                                        }
-                                )
-                            }
-                            is BluetoothHidService.ConnectionState.Registering,
-                            is BluetoothHidService.ConnectionState.Connecting -> {
-                                // Show loading indicator
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(64.dp),
-                                    color = MaterialTheme.extendedColors.info,
-                                    strokeWidth = 6.dp
-                                )
-                            }
-                            else -> {
-                                Text(
-                                    text = when (connectionState) {
-                                        is BluetoothHidService.ConnectionState.Connected -> "✓"
-                                        is BluetoothHidService.ConnectionState.Error -> "⚠️"
-                                        else -> "📱"
-                                    },
-                                    fontSize = 64.sp,
-                                    modifier = Modifier.graphicsLayer {
-                                        scaleX = animatedIconScale
-                                        scaleY = animatedIconScale
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Dimens.spacingXLarge()))
-
-                // Status Text with better typography
-                Text(
-                    text = when (val state = connectionState) {
-                        is BluetoothHidService.ConnectionState.Disconnected -> "Ready to Connect"
-                        is BluetoothHidService.ConnectionState.Registering -> "Setting Up..."
-                        is BluetoothHidService.ConnectionState.Registered -> "Waiting for Mac"
-                        is BluetoothHidService.ConnectionState.Connecting -> "Connecting..."
-                        is BluetoothHidService.ConnectionState.Connected -> "Connected!"
-                        is BluetoothHidService.ConnectionState.Error -> "Connection Error"
-                    },
-                    fontSize = Dimens.statusTextSize(),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.5).sp,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(Dimens.spacingMedium()))
-
-                // Subtitle with improved line height
-                Text(
-                    text = when (val state = connectionState) {
-                        is BluetoothHidService.ConnectionState.Disconnected -> "Transform your phone into a wireless trackpad"
-                        is BluetoothHidService.ConnectionState.Registered -> "Open Bluetooth on your Mac\nand connect to 'DroidPad Trackpad'"
-                        is BluetoothHidService.ConnectionState.Connected -> state.deviceName
-                        is BluetoothHidService.ConnectionState.Error -> state.message
-                        else -> ""
-                    },
-                    fontSize = Dimens.subtitleTextSize(),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    textAlign = TextAlign.Center,
-                    lineHeight = Dimens.subtitleTextSize() * 1.5f,
-                    modifier = Modifier.padding(horizontal = Dimens.spacingXLarge())
-                )
-
-                // Animated help card for Registered state
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = connectionState is BluetoothHidService.ConnectionState.Registered,
-                    enter = fadeIn(animationSpec = tween(400)) + slideInVertically(
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                        initialOffsetY = { it / 4 }
-                    ),
-                    exit = fadeOut(animationSpec = tween(300)) + slideOutVertically()
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(Dimens.spacingLarge()))
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = Dimens.spacingSmall()),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.extendedColors.infoContainer.copy(alpha = 0.9f)
-                            ),
-                            shape = RoundedCornerShape(20.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(Dimens.cardPadding()),
-                                horizontalAlignment = Alignment.Start
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 12.dp)
-                                ) {
-                                    Text(
-                                        text = "💡",
-                                        fontSize = 20.sp,
-                                        modifier = Modifier.padding(end = 8.dp)
-                                    )
-                                    Text(
-                                        text = "Troubleshooting",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.extendedColors.onInfoContainer
-                                    )
-                                }
+                    ConnectionBadge(connectionState)
 
-                                TroubleshootStep("Make sure this phone is discoverable")
-                                TroubleshootStep("Refresh Bluetooth on your Mac")
-                                TroubleshootStep("Look for 'DroidPad Trackpad' (not your phone name)")
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                                Spacer(modifier = Modifier.height(16.dp))
-                                OutlinedButton(
-                                    onClick = {
-                                        val intent = Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
-                                        context.startActivity(intent)
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.extendedColors.onInfoContainer
-                                    ),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        "Open Bluetooth Settings",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
+                    Text(
+                        text = "Connect",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = (-0.5).sp
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Available Bluetooth devices",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    DeviceList(
+                        recentDevices = recentDevices,
+                        connectionState = connectionState,
+                        onDeviceClick = { viewModel.connectToDeviceByAddress(it.address) }
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    when (val state = connectionState) {
+                        is BluetoothHidService.ConnectionState.Registered -> {
+                            StatusHintCard(
+                                title = "Ready to pair",
+                                message = "Open Bluetooth on your Mac and select 'DroidPad Trackpad'.",
+                                actionLabel = "Open Bluetooth",
+                                onAction = {
+                                    val intent = Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                                    context.startActivity(intent)
                                 }
-                            }
+                            )
+                        }
+
+                        is BluetoothHidService.ConnectionState.Error -> {
+                            StatusHintCard(
+                                title = "Connection error",
+                                message = state.message,
+                                accent = MaterialTheme.colorScheme.error
+                            )
+                        }
+
+                        else -> {
+                            Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(Dimens.spacingLarge() + Dimens.spacingMedium()))
-
-                // Main Action Button with elevation and press effect
-                val buttonScale by animateFloatAsState(
-                    targetValue = 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                    label = "buttonScale"
-                )
-
-                Button(
-                    onClick = {
-                        when (connectionState) {
-                            is BluetoothHidService.ConnectionState.Disconnected -> {
-                                android.util.Log.d("MainActivity", "Starting Bluetooth connection - requesting discoverability")
-                                onRequestDiscoverable()
-                            }
-                            is BluetoothHidService.ConnectionState.Connected -> {
-                                // Open trackpad
-                                val intent = Intent(context, FullScreenTrackpadActivity::class.java)
-                                context.startActivity(intent)
-                            }
-                            is BluetoothHidService.ConnectionState.Registered -> {
-                                // Make discoverable again
-                                android.util.Log.d("MainActivity", "Re-requesting discoverability")
-                                onRequestDiscoverable()
-                            }
-                            else -> {}
-                        }
-                    },
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(Dimens.buttonHeight())
-                        .scale(buttonScale),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = when (connectionState) {
-                            is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.success
-                            else -> MaterialTheme.colorScheme.primary
-                        }
-                    ),
-                    elevation = ButtonDefaults.buttonElevation(
-                        defaultElevation = 4.dp,
-                        pressedElevation = 8.dp,
-                        disabledElevation = 0.dp
-                    ),
-                    enabled = connectionState is BluetoothHidService.ConnectionState.Disconnected ||
-                              connectionState is BluetoothHidService.ConnectionState.Connected ||
-                              connectionState is BluetoothHidService.ConnectionState.Registered
+                        .padding(bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
+                    Button(
+                        onClick = {
+                            when (connectionState) {
+                                is BluetoothHidService.ConnectionState.Disconnected -> onRequestDiscoverable()
+                                is BluetoothHidService.ConnectionState.Connected -> {
+                                    val intent = Intent(context, FullScreenTrackpadActivity::class.java)
+                                    context.startActivity(intent)
+                                }
+                                is BluetoothHidService.ConnectionState.Registered -> onRequestDiscoverable()
+                                else -> {}
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = when (connectionState) {
+                                is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.success
+                                else -> MaterialTheme.colorScheme.primary
+                            },
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        enabled = connectionState !is BluetoothHidService.ConnectionState.Connecting &&
+                                connectionState !is BluetoothHidService.ConnectionState.Registering
                     ) {
                         Text(
                             text = when (connectionState) {
-                                is BluetoothHidService.ConnectionState.Disconnected -> "Get Started"
+                                is BluetoothHidService.ConnectionState.Disconnected -> "Connect"
                                 is BluetoothHidService.ConnectionState.Connected -> "Open Trackpad"
-                                is BluetoothHidService.ConnectionState.Registered -> "Retry Connection"
-                                else -> "Please Wait..."
+                                is BluetoothHidService.ConnectionState.Registered -> "Make Discoverable"
+                                is BluetoothHidService.ConnectionState.Connecting -> "Connecting..."
+                                is BluetoothHidService.ConnectionState.Registering -> "Preparing..."
+                                is BluetoothHidService.ConnectionState.Error -> "Try Again"
                             },
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
-                }
 
-                // Animated Recent Devices
-                AnimatedVisibility(
-                    visible = recentDevices.isNotEmpty() && connectionState !is BluetoothHidService.ConnectionState.Connected,
-                    enter = fadeIn(tween(400)) + expandVertically(
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                    ),
-                    exit = fadeOut(tween(300)) + shrinkVertically()
-                ) {
-                    Column {
-                        Spacer(modifier = Modifier.height(28.dp))
-                        Text(
-                            text = "Quick Connect",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            letterSpacing = 0.8.sp
+                    FilledTonalButton(
+                        onClick = { onRequestDiscoverable() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        recentDevices.take(3).forEachIndexed { index, device ->
-                            val delay = index * 50
-                            var visible by remember { mutableStateOf(false) }
-                            LaunchedEffect(Unit) {
-                                kotlinx.coroutines.delay(delay.toLong())
-                                visible = true
-                            }
-
-                            AnimatedVisibility(
-                                visible = visible,
-                                enter = fadeIn(tween(300)) + slideInHorizontally(
-                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-                                    initialOffsetX = { -it / 2 }
-                                )
-                            ) {
-                                OutlinedButton(
-                                    onClick = { viewModel.connectToDeviceByAddress(device.address) },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    shape = RoundedCornerShape(14.dp),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.5.dp,
-                                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Start
-                                    ) {
-                                        Text(
-                                            text = "💻",
-                                            fontSize = 18.sp,
-                                            modifier = Modifier.padding(end = 12.dp)
-                                        )
-                                        Text(
-                                            device.name,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Settings and Advanced buttons row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    // Settings button
-                    TextButton(
-                        onClick = {
-                            val intent = Intent(context, SettingsActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        Text(
+                            text = "Scan Again",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val intent = Intent(context, SettingsActivity::class.java)
+                                context.startActivity(intent)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text(
-                                "⚙️",
-                                fontSize = 16.sp
-                            )
                             Text(
                                 "Settings",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         }
-                    }
 
-                    // Advanced toggle with subtle styling
-                    TextButton(
-                        onClick = { showAdvanced = !showAdvanced },
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        TextButton(
+                            onClick = { showAdvanced = !showAdvanced },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                if (showAdvanced) "Advanced" else "Advanced",
+                                if (showAdvanced) "Hide Advanced" else "Advanced",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                if (showAdvanced) "▲" else "▼",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
                     }
-                }
 
-                // Advanced Options
-                if (showAdvanced) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (isRegistered) {
-                            OutlinedButton(
-                                onClick = { viewModel.unregisterDevice() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Text("Reset")
+                    AnimatedVisibility(showAdvanced) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (isRegistered) {
+                                OutlinedButton(
+                                    onClick = { viewModel.unregisterDevice() },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = MaterialTheme.colorScheme.error
+                                    )
+                                ) {
+                                    Text("Reset")
+                                }
                             }
-                        }
-                        if (connectionState is BluetoothHidService.ConnectionState.Connected) {
-                            OutlinedButton(
-                                onClick = { viewModel.disconnect() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Disconnect")
+                            if (connectionState is BluetoothHidService.ConnectionState.Connected) {
+                                OutlinedButton(
+                                    onClick = { viewModel.disconnect() },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text("Disconnect")
+                                }
                             }
                         }
                     }
@@ -727,22 +486,232 @@ fun TrackpadScreen(
 }
 
 @Composable
-private fun TroubleshootStep(text: String) {
-    Row(
-        modifier = Modifier.padding(vertical = 6.dp),
-        verticalAlignment = Alignment.Top
+private fun ConnectionBadge(connectionState: BluetoothHidService.ConnectionState) {
+    val accent = MaterialTheme.colorScheme.primary
+    val outline = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f)
+    val badgeColor = when (connectionState) {
+        is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.successContainer
+        is BluetoothHidService.ConnectionState.Registered -> MaterialTheme.extendedColors.infoContainer
+        is BluetoothHidService.ConnectionState.Error -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    Box(
+        modifier = Modifier
+            .size(120.dp)
+            .background(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.32f),
+                        Color.Transparent
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "•",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.extendedColors.onInfoContainer,
-            modifier = Modifier.padding(end = 8.dp, top = 2.dp)
+        Surface(
+            shape = CircleShape,
+            color = badgeColor.copy(alpha = 0.9f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(1.dp, outline)
+        ) {
+            Box(
+                modifier = Modifier.size(96.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Bluetooth,
+                    contentDescription = "Bluetooth",
+                    tint = when (connectionState) {
+                        is BluetoothHidService.ConnectionState.Connected -> MaterialTheme.extendedColors.success
+                        else -> accent
+                    },
+                    modifier = Modifier.size(44.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceList(
+    recentDevices: List<com.dps.droidpadmacos.data.ConnectedDevice>,
+    connectionState: BluetoothHidService.ConnectionState,
+    onDeviceClick: (com.dps.droidpadmacos.data.ConnectedDevice) -> Unit
+) {
+    val activeName = (connectionState as? BluetoothHidService.ConnectionState.Connected)?.deviceName
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            if (recentDevices.isEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = when (connectionState) {
+                            is BluetoothHidService.ConnectionState.Connecting -> "Connecting..."
+                            is BluetoothHidService.ConnectionState.Registering -> "Setting up..."
+                            else -> "Searching..."
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                recentDevices.take(3).forEachIndexed { index, device ->
+                    val isActive = activeName?.equals(device.name, ignoreCase = true) == true
+                    DeviceRow(
+                        device = device,
+                        status = if (isActive) "Connected" else "Tap to connect",
+                        isActive = isActive,
+                        onClick = { onDeviceClick(device) }
+                    )
+
+                    if (index != recentDevices.take(3).lastIndex) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceRow(
+    device: com.dps.droidpadmacos.data.ConnectedDevice,
+    status: String,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        color = if (isActive) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        } else {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        },
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = if (isActive) 0.4f else 0.2f)
         )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.extendedColors.onInfoContainer,
-            lineHeight = 20.sp
-        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "💻", fontSize = 18.sp)
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = device.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
+            ) {
+                Text(
+                    text = if (isActive) "Connected" else "Available",
+                    color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusHintCard(
+    title: String,
+    message: String,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = accent
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (actionLabel != null && onAction != null) {
+                TextButton(
+                    onClick = onAction,
+                    modifier = Modifier.padding(top = 2.dp)
+                ) {
+                    Text(actionLabel, color = accent)
+                }
+            }
+        }
     }
 }

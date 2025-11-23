@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,7 +48,6 @@ class SettingsActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     prefs: SharedPreferences,
@@ -69,360 +71,357 @@ fun SettingsScreen(
     var touchFxEnabled by remember { mutableStateOf(prefs.getBoolean("touch_fx_enabled", true)) }
     var touchFxStyle by remember { mutableStateOf(prefs.getInt("touch_fx_style", 1)) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Text("←", fontSize = 24.sp)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+    val backgroundBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF0A0F16),
+                Color(0xFF0F1621)
             )
-        }
-    ) { paddingValues ->
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            // UI Appearance Settings
-            SettingsSection(title = "UI Appearance") {
-                SwitchSetting(
-                    title = "Hide All UI Overlays",
-                    description = "Hide all buttons and overlays in trackpad mode for a clean interface",
-                    checked = hideUIOverlay,
-                    onCheckedChange = {
-                        hideUIOverlay = it
-                        prefs.edit().putBoolean("hide_ui_overlay", it).apply()
-                        // If hiding all UI, also update related settings
-                        if (it) {
-                            minimalistMode = true
-                            prefs.edit().putBoolean("minimalist_mode", true).apply()
-                        }
-                    }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Settings",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f)
                 )
-
-                SwitchSetting(
-                    title = "Minimalist Mode",
-                    description = "Show only essential UI elements",
-                    checked = minimalistMode,
-                    onCheckedChange = {
-                        minimalistMode = it
-                        prefs.edit().putBoolean("minimalist_mode", it).apply()
-                    },
-                    enabled = !hideUIOverlay
-                )
-
-                SwitchSetting(
-                    title = "Show Gesture Guide",
-                    description = "Display gesture hints at the bottom of the screen",
-                    checked = showGestureGuide,
-                    onCheckedChange = {
-                        showGestureGuide = it
-                        prefs.edit().putBoolean("show_gesture_guide", it).apply()
-                    },
-                    enabled = !hideUIOverlay
-                )
-
-                SwitchSetting(
-                    title = "Show Connection Status",
-                    description = "Display Bluetooth connection indicator",
-                    checked = showConnectionStatus,
-                    onCheckedChange = {
-                        showConnectionStatus = it
-                        prefs.edit().putBoolean("show_connection_status", it).apply()
-                    },
-                    enabled = !hideUIOverlay
-                )
-
-                BackgroundModeSetting(
-                    selectedMode = backgroundMode,
-                    onModeChange = {
-                        backgroundMode = it
-                        prefs.edit().putInt("background_mode", it).apply()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Trackpad Settings
-            SettingsSection(title = "Trackpad") {
-                SliderSetting(
-                    title = "Trackpad Sensitivity",
-                    value = trackpadSensitivity,
-                    onValueChange = {
-                        trackpadSensitivity = it
-                        prefs.edit().putFloat("trackpad_sensitivity", it).apply()
-                    },
-                    valueRange = 0.5f..2.0f,
-                    displayValue = String.format("%.1fx", trackpadSensitivity)
-                )
-
-                SliderSetting(
-                    title = "Scroll Speed",
-                    value = scrollSpeed,
-                    onValueChange = {
-                        scrollSpeed = it
-                        prefs.edit().putFloat("scroll_speed", it).apply()
-                    },
-                    valueRange = 0.5f..3.0f,
-                    displayValue = String.format("%.1fx", scrollSpeed)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Gesture Settings
-            SettingsSection(title = "Gestures") {
-                SwitchSetting(
-                    title = "Three Finger Gestures",
-                    description = "Enable Mission Control, Desktop, and Space switching",
-                    checked = enableThreeFingerGestures,
-                    onCheckedChange = {
-                        enableThreeFingerGestures = it
-                        prefs.edit().putBoolean("three_finger_gestures", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Four Finger Gestures",
-                    description = "Enable advanced multi-finger gestures",
-                    checked = enableFourFingerGestures,
-                    onCheckedChange = {
-                        enableFourFingerGestures = it
-                        prefs.edit().putBoolean("four_finger_gestures", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Pinch to Zoom",
-                    description = "Enable pinch gesture for zooming",
-                    checked = enablePinchZoom,
-                    onCheckedChange = {
-                        enablePinchZoom = it
-                        prefs.edit().putBoolean("pinch_zoom", it).apply()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Feedback Settings
-            SettingsSection(title = "Feedback") {
-                SwitchSetting(
-                    title = "Haptic Feedback",
-                    description = "Vibrate on clicks and gestures",
-                    checked = enableHapticFeedback,
-                    onCheckedChange = {
-                        enableHapticFeedback = it
-                        prefs.edit().putBoolean("haptic_feedback", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Sound Feedback",
-                    description = "Play sounds for actions",
-                    checked = enableSoundFeedback,
-                    onCheckedChange = {
-                        enableSoundFeedback = it
-                        prefs.edit().putBoolean("sound_feedback", it).apply()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Keyboard Settings
-            SettingsSection(title = "Keyboard") {
-                KeyboardLayoutSetting(
-                    prefs = prefs
-                )
-
-                KeyboardThemeSetting(
-                    prefs = prefs
-                )
-
-                SliderSetting(
-                    title = "Keyboard Size",
-                    value = prefs.getFloat("keyboard_scale", 1.0f),
-                    onValueChange = {
-                        prefs.edit().putFloat("keyboard_scale", it).apply()
-                    },
-                    valueRange = 0.6f..1.4f,
-                    displayValue = String.format("%.0f%%", prefs.getFloat("keyboard_scale", 1.0f) * 100)
-                )
-
-                SwitchSetting(
-                    title = "Show Key Hints",
-                    description = "Display secondary key labels",
-                    checked = prefs.getBoolean("show_keyboard_hints", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("show_keyboard_hints", it).apply()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Advanced Trackpad Settings
-            SettingsSection(title = "Advanced Trackpad") {
-                SwitchSetting(
-                    title = "Natural Scrolling",
-                    description = "Scroll direction follows finger movement",
-                    checked = prefs.getBoolean("natural_scrolling", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("natural_scrolling", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Tap to Click",
-                    description = "Single tap performs a click",
-                    checked = prefs.getBoolean("tap_to_click", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("tap_to_click", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Two-Finger Right Click",
-                    description = "Tap with two fingers for right click",
-                    checked = prefs.getBoolean("two_finger_right_click", true),
-                    onCheckedChange = {
-                        prefs.edit().putBoolean("two_finger_right_click", it).apply()
-                    }
-                )
-
-                SliderSetting(
-                    title = "Air Mouse Sensitivity",
-                    value = prefs.getFloat("air_mouse_sensitivity", 1.5f),
-                    onValueChange = {
-                        prefs.edit().putFloat("air_mouse_sensitivity", it).apply()
-                    },
-                    valueRange = 0.5f..5.0f,
-                    displayValue = String.format("%.1fx", prefs.getFloat("air_mouse_sensitivity", 1.5f))
-                )
-
-                SliderSetting(
-                    title = "Desk Mouse Sensitivity",
-                    value = prefs.getFloat("desk_mouse_sensitivity", 2500f),
-                    onValueChange = {
-                        prefs.edit().putFloat("desk_mouse_sensitivity", it).apply()
-                    },
-                    valueRange = 1000f..5000f,
-                    displayValue = String.format("%.0f", prefs.getFloat("desk_mouse_sensitivity", 2500f))
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Haptic & Visual Feedback
-            SettingsSection(title = "Feedback & Appearance") {
-                HapticIntensitySetting(
-                    prefs = prefs
-                )
-
-                SliderSetting(
-                    title = "UI Opacity",
-                    value = prefs.getFloat("ui_opacity", 0.95f),
-                    onValueChange = {
-                        prefs.edit().putFloat("ui_opacity", it).apply()
-                    },
-                    valueRange = 0.5f..1.0f,
-                    displayValue = String.format("%.0f%%", prefs.getFloat("ui_opacity", 0.95f) * 100)
-                )
-
-                SwitchSetting(
-                    title = "Touch Effects",
-                    description = "Show animated glow under your fingers on the trackpad",
-                    checked = touchFxEnabled,
-                    onCheckedChange = {
-                        touchFxEnabled = it
-                        prefs.edit().putBoolean("touch_fx_enabled", it).apply()
-                    }
-                )
-
-                if (touchFxEnabled) {
-                    TouchEffectStyleSetting(
-                        selectedStyle = touchFxStyle,
-                        onStyleChange = { style ->
-                            touchFxStyle = style
-                            prefs.edit().putInt("touch_fx_style", style).apply()
-                        }
+                TextButton(onClick = onBack) {
+                    Text(
+                        text = "Done",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // System Settings
-            SettingsSection(title = "System") {
-                SwitchSetting(
-                    title = "Keep Screen On",
-                    description = "Prevent screen timeout in trackpad mode",
-                    checked = keepScreenOn,
-                    onCheckedChange = {
-                        keepScreenOn = it
-                        prefs.edit().putBoolean("keep_screen_on", it).apply()
-                    }
-                )
-
-                SwitchSetting(
-                    title = "Auto Reconnect",
-                    description = "Automatically reconnect to last device",
-                    checked = autoReconnect,
-                    onCheckedChange = {
-                        autoReconnect = it
-                        prefs.edit().putBoolean("auto_reconnect", it).apply()
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Reset Settings Button
-            OutlinedButton(
-                onClick = {
-                    // Reset all settings to defaults
-                    prefs.edit().clear().apply()
-                    // Reload defaults
-                    hideUIOverlay = false
-                    showGestureGuide = true
-                    showConnectionStatus = true
-                    enableHapticFeedback = true
-                    enableSoundFeedback = false
-                    backgroundMode = 0
-                    trackpadSensitivity = 1.0f
-                    scrollSpeed = 1.0f
-                    enableThreeFingerGestures = true
-                    enableFourFingerGestures = true
-                    enablePinchZoom = true
-                    autoReconnect = true
-                    keepScreenOn = true
-                    minimalistMode = false
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent
-                )
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Text("Reset to Defaults")
-            }
+                // UI Appearance Settings
+                SettingsSection(title = "UI Appearance") {
+                    SwitchSetting(
+                        title = "Hide All UI Overlays",
+                        description = "Hide all buttons and overlays in trackpad mode for a clean interface",
+                        checked = hideUIOverlay,
+                        onCheckedChange = {
+                            hideUIOverlay = it
+                            prefs.edit().putBoolean("hide_ui_overlay", it).apply()
+                            if (it) {
+                                minimalistMode = true
+                                prefs.edit().putBoolean("minimalist_mode", true).apply()
+                            }
+                        }
+                    )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                    SwitchSetting(
+                        title = "Minimalist Mode",
+                        description = "Show only essential UI elements",
+                        checked = minimalistMode,
+                        onCheckedChange = {
+                            minimalistMode = it
+                            prefs.edit().putBoolean("minimalist_mode", it).apply()
+                        },
+                        enabled = !hideUIOverlay
+                    )
+
+                    SwitchSetting(
+                        title = "Show Gesture Guide",
+                        description = "Display gesture hints at the bottom of the screen",
+                        checked = showGestureGuide,
+                        onCheckedChange = {
+                            showGestureGuide = it
+                            prefs.edit().putBoolean("show_gesture_guide", it).apply()
+                        },
+                        enabled = !hideUIOverlay
+                    )
+
+                    SwitchSetting(
+                        title = "Show Connection Status",
+                        description = "Display Bluetooth connection indicator",
+                        checked = showConnectionStatus,
+                        onCheckedChange = {
+                            showConnectionStatus = it
+                            prefs.edit().putBoolean("show_connection_status", it).apply()
+                        },
+                        enabled = !hideUIOverlay
+                    )
+
+                    BackgroundModeSetting(
+                        selectedMode = backgroundMode,
+                        onModeChange = {
+                            backgroundMode = it
+                            prefs.edit().putInt("background_mode", it).apply()
+                        }
+                    )
+                }
+
+                // Trackpad Settings
+                SettingsSection(title = "Trackpad") {
+                    SliderSetting(
+                        title = "Trackpad Sensitivity",
+                        value = trackpadSensitivity,
+                        onValueChange = {
+                            trackpadSensitivity = it
+                            prefs.edit().putFloat("trackpad_sensitivity", it).apply()
+                        },
+                        valueRange = 0.5f..2.0f,
+                        displayValue = String.format("%.1fx", trackpadSensitivity)
+                    )
+
+                    SliderSetting(
+                        title = "Scroll Speed",
+                        value = scrollSpeed,
+                        onValueChange = {
+                            scrollSpeed = it
+                            prefs.edit().putFloat("scroll_speed", it).apply()
+                        },
+                        valueRange = 0.5f..3.0f,
+                        displayValue = String.format("%.1fx", scrollSpeed)
+                    )
+                }
+
+                // Gestures
+                SettingsSection(title = "Gestures") {
+                    SwitchSetting(
+                        title = "Three Finger Gestures",
+                        description = "Enable Mission Control, Desktop, and Space switching",
+                        checked = enableThreeFingerGestures,
+                        onCheckedChange = {
+                            enableThreeFingerGestures = it
+                            prefs.edit().putBoolean("three_finger_gestures", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Four Finger Gestures",
+                        description = "Enable advanced multi-finger gestures",
+                        checked = enableFourFingerGestures,
+                        onCheckedChange = {
+                            enableFourFingerGestures = it
+                            prefs.edit().putBoolean("four_finger_gestures", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Pinch to Zoom",
+                        description = "Enable pinch gesture for zooming",
+                        checked = enablePinchZoom,
+                        onCheckedChange = {
+                            enablePinchZoom = it
+                            prefs.edit().putBoolean("pinch_zoom", it).apply()
+                        }
+                    )
+                }
+
+                // Feedback Settings
+                SettingsSection(title = "Feedback") {
+                    SwitchSetting(
+                        title = "Haptic Feedback",
+                        description = "Vibrate on clicks and gestures",
+                        checked = enableHapticFeedback,
+                        onCheckedChange = {
+                            enableHapticFeedback = it
+                            prefs.edit().putBoolean("haptic_feedback", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Sound Feedback",
+                        description = "Play sounds for actions",
+                        checked = enableSoundFeedback,
+                        onCheckedChange = {
+                            enableSoundFeedback = it
+                            prefs.edit().putBoolean("sound_feedback", it).apply()
+                        }
+                    )
+                }
+
+                // Keyboard Settings
+                SettingsSection(title = "Keyboard") {
+                    KeyboardLayoutSetting(prefs = prefs)
+                    KeyboardThemeSetting(prefs = prefs)
+
+                    SliderSetting(
+                        title = "Keyboard Size",
+                        value = prefs.getFloat("keyboard_scale", 1.0f),
+                        onValueChange = {
+                            prefs.edit().putFloat("keyboard_scale", it).apply()
+                        },
+                        valueRange = 0.6f..1.4f,
+                        displayValue = String.format("%.0f%%", prefs.getFloat("keyboard_scale", 1.0f) * 100)
+                    )
+
+                    SwitchSetting(
+                        title = "Show Key Hints",
+                        description = "Display secondary key labels",
+                        checked = prefs.getBoolean("show_keyboard_hints", true),
+                        onCheckedChange = {
+                            prefs.edit().putBoolean("show_keyboard_hints", it).apply()
+                        }
+                    )
+                }
+
+                // Advanced Trackpad Settings
+                SettingsSection(title = "Advanced Trackpad") {
+                    SwitchSetting(
+                        title = "Natural Scrolling",
+                        description = "Scroll direction follows finger movement",
+                        checked = prefs.getBoolean("natural_scrolling", true),
+                        onCheckedChange = {
+                            prefs.edit().putBoolean("natural_scrolling", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Tap to Click",
+                        description = "Single tap performs a click",
+                        checked = prefs.getBoolean("tap_to_click", true),
+                        onCheckedChange = {
+                            prefs.edit().putBoolean("tap_to_click", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Two-Finger Right Click",
+                        description = "Tap with two fingers for right click",
+                        checked = prefs.getBoolean("two_finger_right_click", true),
+                        onCheckedChange = {
+                            prefs.edit().putBoolean("two_finger_right_click", it).apply()
+                        }
+                    )
+
+                    SliderSetting(
+                        title = "Air Mouse Sensitivity",
+                        value = prefs.getFloat("air_mouse_sensitivity", 1.5f),
+                        onValueChange = {
+                            prefs.edit().putFloat("air_mouse_sensitivity", it).apply()
+                        },
+                        valueRange = 0.5f..5.0f,
+                        displayValue = String.format("%.1fx", prefs.getFloat("air_mouse_sensitivity", 1.5f))
+                    )
+
+                    SliderSetting(
+                        title = "Desk Mouse Sensitivity",
+                        value = prefs.getFloat("desk_mouse_sensitivity", 2500f),
+                        onValueChange = {
+                            prefs.edit().putFloat("desk_mouse_sensitivity", it).apply()
+                        },
+                        valueRange = 1000f..5000f,
+                        displayValue = String.format("%.0f", prefs.getFloat("desk_mouse_sensitivity", 2500f))
+                    )
+                }
+
+                // Haptic & Visual Feedback
+                SettingsSection(title = "Feedback & Appearance") {
+                    HapticIntensitySetting(prefs = prefs)
+
+                    SliderSetting(
+                        title = "UI Opacity",
+                        value = prefs.getFloat("ui_opacity", 0.95f),
+                        onValueChange = {
+                            prefs.edit().putFloat("ui_opacity", it).apply()
+                        },
+                        valueRange = 0.5f..1.0f,
+                        displayValue = String.format("%.0f%%", prefs.getFloat("ui_opacity", 0.95f) * 100)
+                    )
+
+                    SwitchSetting(
+                        title = "Touch Effects",
+                        description = "Show animated glow under your fingers on the trackpad",
+                        checked = touchFxEnabled,
+                        onCheckedChange = {
+                            touchFxEnabled = it
+                            prefs.edit().putBoolean("touch_fx_enabled", it).apply()
+                        }
+                    )
+
+                    if (touchFxEnabled) {
+                        TouchEffectStyleSetting(
+                            selectedStyle = touchFxStyle,
+                            onStyleChange = { style ->
+                                touchFxStyle = style
+                                prefs.edit().putInt("touch_fx_style", style).apply()
+                            }
+                        )
+                    }
+                }
+
+                // System Settings
+                SettingsSection(title = "System") {
+                    SwitchSetting(
+                        title = "Keep Screen On",
+                        description = "Prevent screen timeout in trackpad mode",
+                        checked = keepScreenOn,
+                        onCheckedChange = {
+                            keepScreenOn = it
+                            prefs.edit().putBoolean("keep_screen_on", it).apply()
+                        }
+                    )
+
+                    SwitchSetting(
+                        title = "Auto Reconnect",
+                        description = "Automatically reconnect to last device",
+                        checked = autoReconnect,
+                        onCheckedChange = {
+                            autoReconnect = it
+                            prefs.edit().putBoolean("auto_reconnect", it).apply()
+                        }
+                    )
+                }
+
+                // Reset Settings Button
+                OutlinedButton(
+                    onClick = {
+                        prefs.edit().clear().apply()
+                        hideUIOverlay = false
+                        showGestureGuide = true
+                        showConnectionStatus = true
+                        enableHapticFeedback = true
+                        enableSoundFeedback = false
+                        backgroundMode = 0
+                        trackpadSensitivity = 1.0f
+                        scrollSpeed = 1.0f
+                        enableThreeFingerGestures = true
+                        enableFourFingerGestures = true
+                        enablePinchZoom = true
+                        autoReconnect = true
+                        keepScreenOn = true
+                        minimalistMode = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
+                ) {
+                    Text("Reset to Defaults")
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
         }
     }
 }
@@ -435,20 +434,24 @@ fun SettingsSection(
     Column {
         Text(
             text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 12.dp)
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 10.dp)
         )
 
         Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.45f))
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 content()
             }
@@ -467,7 +470,7 @@ fun SwitchSetting(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -492,7 +495,13 @@ fun SwitchSetting(
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            enabled = enabled
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                uncheckedThumbColor = MaterialTheme.colorScheme.surfaceVariant,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
     }
 }
@@ -530,7 +539,12 @@ fun SliderSetting(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            modifier = Modifier.padding(top = 8.dp)
+            modifier = Modifier.padding(top = 8.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
         )
     }
 }
@@ -582,11 +596,15 @@ fun BackgroundOption(
     onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 else MaterialTheme.colorScheme.surface,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = if (isSelected) 0.6f else 0.35f)
+        ),
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .clickable { onClick() }
     ) {
         Text(
@@ -594,7 +612,8 @@ fun BackgroundOption(
             fontSize = 14.sp,
             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
 }
@@ -736,12 +755,16 @@ fun LayoutOption(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
                 else MaterialTheme.colorScheme.surface,
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() },
-        shadowElevation = if (isSelected) 4.dp else 0.dp
+        shadowElevation = 0.dp,
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outline.copy(alpha = if (isSelected) 0.6f else 0.35f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -756,7 +779,7 @@ fun LayoutOption(
             Text(
                 text = label,
                 fontSize = 14.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                         else MaterialTheme.colorScheme.onSurface
             )
@@ -841,12 +864,10 @@ fun ThemeOption(
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(color)
-                .then(
-                    if (isSelected) {
-                        Modifier.padding(4.dp)
-                    } else {
-                        Modifier
-                    }
+                .border(
+                    width = 2.dp,
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    shape = RoundedCornerShape(12.dp)
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -910,11 +931,11 @@ fun IntensityOption(
     onClick: () -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = if (isSelected) MaterialTheme.colorScheme.primary
+        shape = RoundedCornerShape(10.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
                 else MaterialTheme.colorScheme.surface,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(10.dp))
             .clickable { onClick() }
     ) {
         Text(
@@ -922,7 +943,8 @@ fun IntensityOption(
             fontSize = 13.sp,
             color = if (isSelected) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
         )
     }
 }

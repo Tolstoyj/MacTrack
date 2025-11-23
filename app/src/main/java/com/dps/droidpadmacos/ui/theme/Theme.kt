@@ -144,8 +144,8 @@ private val DarkColorScheme = darkColorScheme(
 @Composable
 fun DroidPadMacOSTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Dynamic color is available on Android 12+, but we keep brand colors by default
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

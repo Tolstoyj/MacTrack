@@ -12,9 +12,31 @@
 
 ---
 
+## 📸 Screenshots
+
+<div align="center">
+
+| Android App | macOS Pairing |
+|-------------|---------------|
+| ![Main Screen](docs/images/Screenshot_20251123_194648_DroidPadMacOS.jpg) | ![macOS Bluetooth](docs/images/Screenshot%202025-11-23%20at%2019.47.36.png) |
+| Main screen with device registration | macOS Bluetooth settings |
+
+| Full-Screen Trackpad | Settings |
+|---------------------|----------|
+| ![Full Screen](docs/images/Screenshot_20251123_194826_DroidPadMacOS.jpg) | ![Settings](docs/images/Screenshot_20251123_194750_Settings.jpg) |
+| Full-screen trackpad mode | Customizable settings |
+
+</div>
+
+---
+
 ## 📱 Overview
 
 DroidPad is an Android application that enables your Android phone or tablet to function as a Bluetooth HID (Human Interface Device) trackpad and mouse for macOS. It provides a seamless, wireless control experience with support for multi-touch gestures, air mouse mode, and macOS-specific shortcuts.
+
+### How It Works
+
+DroidPad uses the standard Bluetooth HID protocol to register your Android device as a pointing device with macOS. Once paired, your Mac recognizes it as a standard trackpad, requiring no additional software installation on your Mac. The connection is direct and works immediately after the initial pairing process.
 
 ### Key Highlights
 
@@ -103,24 +125,47 @@ See the [Building](#-building) section below.
 
 ### First-Time Setup
 
-1. **Launch the App**
-   - Open DroidPad on your Android device
-   - Grant Bluetooth permissions if prompted
+#### Step 1: Launch the App
+- Open DroidPad on your Android device
+- Grant Bluetooth permissions if prompted
+- Complete the onboarding process (battery optimization settings)
 
-2. **Register as HID Device**
-   - Tap the "Register" button
-   - Accept the Bluetooth discoverability request (5 minutes)
-   - Wait for "Device Registered" status
+![Onboarding Screen](docs/images/Screenshot_20251123_194616_DroidPadMacOS.jpg)
+*Onboarding screen - First launch setup. Make sure to enable battery optimization exception for reliable background operation.*
 
-3. **Pair with macOS**
-   - On your Mac, open **System Settings** → **Bluetooth**
-   - Look for **"DroidPad Trackpad"** (NOT your phone's name)
-   - Click **"Connect"**
-   - Wait for connection confirmation
+#### Step 2: Register as HID Device
+- Tap the **"Register"** button on the main screen
+- Accept the Bluetooth discoverability request (typically 5 minutes)
+- Wait for "Device Registered" status confirmation
+- Your device will now appear as "DroidPad Trackpad" in Bluetooth searches
 
-4. **Important First-Time Note**
-   - If your device was previously paired with your Mac, you **must** forget/unpair it first in Mac Bluetooth settings
-   - Then pair fresh as "DroidPad Trackpad"
+![Main Screen](docs/images/Screenshot_20251123_194648_DroidPadMacOS.jpg)
+*Main screen - Tap "Register" to make your device discoverable as a trackpad. The status card shows registration state.*
+
+#### Step 3: Pair with macOS
+1. On your Mac, open **System Settings** (or System Preferences on older macOS)
+2. Navigate to **Bluetooth** settings
+3. Look for **"DroidPad Trackpad"** in the list of available devices
+   - ⚠️ **Important**: Look for "DroidPad Trackpad", NOT your phone's actual name
+4. Click **"Connect"** next to "DroidPad Trackpad"
+5. Wait for connection confirmation - you should see it change to "Connected"
+
+![macOS Bluetooth Settings](docs/images/Screenshot%202025-11-23%20at%2019.47.36.png)
+*macOS Bluetooth Settings - Look for "DroidPad Trackpad" in the list of devices. Make sure Bluetooth is enabled on your Mac.*
+
+![macOS Bluetooth Pairing](docs/images/Screenshot%202025-11-23%20at%2019.47.58.png)
+*macOS Bluetooth Pairing - Click "Connect" to pair with DroidPad Trackpad. The connection should complete within a few seconds.*
+
+#### Step 4: Start Using
+- Once connected, the app automatically enters full-screen trackpad mode
+- You can now use your Android device to control your Mac's cursor
+- Touch and drag on the screen to move the cursor
+- Tap to click, use multi-finger gestures for scrolling and macOS shortcuts
+
+#### ⚠️ Important Notes
+- **If previously paired**: If your device was previously paired with your Mac (as a regular Bluetooth device), you **must** forget/unpair it first in Mac Bluetooth settings before pairing as "DroidPad Trackpad"
+- **One device at a time**: Only one device can be connected as "DroidPad Trackpad" at a time
+- **Auto-reconnect**: Once paired, the app will automatically attempt to reconnect on future launches
 
 ### Using the Trackpad
 
@@ -129,6 +174,9 @@ See the [Building](#-building) section below.
 - **Status Card**: Shows current connection state
 - **Register/Unregister**: Control HID device registration
 - **Recent Devices**: Quick access to previously connected devices
+
+![Main Screen Connected](docs/images/Screenshot_20251123_194818_DroidPadMacOS.jpg)
+*Main screen showing connection status and device registration*
 
 #### Full-Screen Mode
 Automatically launches when connected. Features:
@@ -139,6 +187,12 @@ Automatically launches when connected. Features:
   - Mission Control button
   - App Switcher button
   - Show Desktop button
+
+![Full Screen Trackpad](docs/images/Screenshot_20251123_194826_DroidPadMacOS.jpg)
+*Full-screen trackpad mode - Active trackpad with quick action buttons*
+
+![Full Screen Connected](docs/images/Screenshot_20251123_194835_DroidPadMacOS.jpg)
+*Full-screen trackpad mode - Connected and ready to use*
 
 ### Gestures
 
@@ -160,6 +214,18 @@ Automatically launches when connected. Features:
 3. Tap the Air Mouse button (📱) to enable
 4. Tilt your device to move the cursor
 5. Tap again to disable
+
+### Settings
+
+Access settings from the main screen or full-screen mode to customize:
+- Pointer speed and sensitivity
+- Scroll speed and direction
+- Tap-to-click behavior
+- Gesture guides
+- Connection preferences
+
+![Settings Screen](docs/images/Screenshot_20251123_194750_Settings.jpg)
+*Settings screen - Customize trackpad behavior and preferences*
 
 ### Troubleshooting
 
