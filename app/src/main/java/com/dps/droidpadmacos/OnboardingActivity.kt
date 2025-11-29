@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -16,10 +18,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -34,13 +33,19 @@ class OnboardingActivity : ComponentActivity() {
         getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
+    // Mutable state that can be updated when activity resumes
+    private val batteryOptimizationIgnored = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check initial state
+        batteryOptimizationIgnored.value = isBatteryOptimizationIgnored()
 
         setContent {
             DroidPadMacOSTheme {
                 OnboardingScreen(
-                    isBatteryOptimizationIgnored = isBatteryOptimizationIgnored(),
+                    isBatteryOptimizationIgnored = batteryOptimizationIgnored.value,
                     onRequestBatteryOptimizationException = { openBatteryOptimizationSettings() },
                     onContinue = {
                         markOnboardingComplete()
@@ -50,6 +55,12 @@ class OnboardingActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Recheck permission status when returning from settings
+        batteryOptimizationIgnored.value = isBatteryOptimizationIgnored()
     }
 
     private fun isBatteryOptimizationIgnored(): Boolean {
@@ -64,14 +75,25 @@ class OnboardingActivity : ComponentActivity() {
     private fun openBatteryOptimizationSettings() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
+                Log.d("OnboardingActivity", "Opening battery optimization settings for $packageName")
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
                 }
                 startActivity(intent)
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.e("OnboardingActivity", "Failed to open battery optimization dialog", e)
                 // Fallback: open general battery optimization settings
-                val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
-                startActivity(intent)
+                try {
+                    val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                    startActivity(intent)
+                } catch (e2: Exception) {
+                    Log.e("OnboardingActivity", "Failed to open battery settings", e2)
+                    Toast.makeText(
+                        this,
+                        "Please go to Settings > Battery > Battery Optimization and allow DroidPad",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -99,8 +121,6 @@ private fun OnboardingScreen(
     onRequestBatteryOptimizationException: () -> Unit,
     onContinue: () -> Unit
 ) {
-    var optimizationIgnored by remember { mutableStateOf(isBatteryOptimizationIgnored) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -150,13 +170,12 @@ private fun OnboardingScreen(
                     Button(
                         onClick = {
                             onRequestBatteryOptimizationException()
-                            optimizationIgnored = true
                         },
-                        enabled = !optimizationIgnored,
+                        enabled = !isBatteryOptimizationIgnored,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = if (optimizationIgnored) "Already allowed" else "Allow background running"
+                            text = if (isBatteryOptimizationIgnored) "Already allowed" else "Allow background running"
                         )
                     }
                 }

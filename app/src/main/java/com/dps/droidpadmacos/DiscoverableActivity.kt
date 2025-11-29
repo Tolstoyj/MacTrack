@@ -50,6 +50,7 @@ class DiscoverableActivity : ComponentActivity() {
 
     private val viewModel: TrackpadViewModel by viewModels()
     private var bluetoothAdapter: BluetoothAdapter? = null
+    private var hasNavigatedToTrackpad = false  // Prevent multiple navigations
 
     // BroadcastReceiver to listen for Bluetooth device connections
     private val bluetoothReceiver = object : BroadcastReceiver() {
@@ -98,13 +99,19 @@ class DiscoverableActivity : ComponentActivity() {
 
                 when (state) {
                     is BluetoothHidService.ConnectionState.Connected -> {
-                        Log.d(TAG, "Mac connected! Navigating to trackpad...")
-                        // Navigate to full screen trackpad
-                        delay(500) // Small delay for smooth transition
-                        val intent = Intent(this@DiscoverableActivity, FullScreenTrackpadActivity::class.java)
-                        intent.putExtra("CONNECTION_MODE", "BLUETOOTH")
-                        startActivity(intent)
-                        finish()
+                        // Prevent multiple navigations
+                        if (!hasNavigatedToTrackpad) {
+                            hasNavigatedToTrackpad = true
+                            Log.d(TAG, "Mac connected! Navigating to trackpad...")
+                            // Navigate to full screen trackpad
+                            delay(500) // Small delay for smooth transition
+                            val intent = Intent(this@DiscoverableActivity, FullScreenTrackpadActivity::class.java).apply {
+                                putExtra("CONNECTION_MODE", "BLUETOOTH")
+                                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            startActivity(intent)
+                            finish()
+                        }
                     }
                     else -> {
                         // Still waiting

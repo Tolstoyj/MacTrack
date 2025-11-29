@@ -18,6 +18,9 @@
     <!-- On newer Android versions, this specific type may be required -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" tools:ignore="UnknownPermission" />
 
+    <!-- Required to request battery optimization exemption -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <application
